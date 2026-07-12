@@ -11,6 +11,8 @@ A modern Java Swing calculator with a scientific mode built for everyday math an
 - Memory-style Ans support for chaining calculations
 - Clear and backspace controls
 - Clean desktop-style interface
+- Memory buttons (MC, MR, M+, M-)
+- Theme toggle for light and dark mode
 
 ## Requirements
 

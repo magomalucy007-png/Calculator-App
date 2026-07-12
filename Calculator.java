@@ -11,6 +11,12 @@ public class Calculator extends JFrame implements ActionListener {
     private boolean startNewNumber = true;
     private double lastResult = 0.0;
     private boolean hasLastResult = false;
+    private double memory = 0.0;
+    private boolean hasMemory = false;
+    private boolean darkMode = false;
+    private JPanel buttonPanel;
+    private JButton themeToggleButton;
+    private JLabel memoryLabel;
 
     private final String[] buttonLabels = {
         "7", "8", "9", "/", "C", "sin",
@@ -25,24 +31,47 @@ public class Calculator extends JFrame implements ActionListener {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(460, 560);
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout(6, 6));
+        setLayout(new BorderLayout(8, 8));
+
+        JPanel topPanel = new JPanel(new BorderLayout(6, 6));
+        topPanel.setBorder(BorderFactory.createEmptyBorder(6, 6, 0, 6));
 
         display = new JTextField("0");
         display.setHorizontalAlignment(SwingConstants.RIGHT);
         display.setEditable(false);
         display.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        display.setBackground(new Color(245, 248, 250));
         display.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        add(display, BorderLayout.NORTH);
+        topPanel.add(display, BorderLayout.CENTER);
 
-        JPanel buttonPanel = new JPanel(new GridLayout(5, 6, 6, 6));
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        String[] memoryButtons = {"MC", "MR", "M+", "M-"};
+        for (String label : memoryButtons) {
+            JButton button = new JButton(label);
+            button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            button.addActionListener(this);
+            button.setFocusable(false);
+            controlPanel.add(button);
+        }
+
+        themeToggleButton = new JButton("🌙");
+        themeToggleButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        themeToggleButton.addActionListener(this);
+        themeToggleButton.setFocusable(false);
+        controlPanel.add(themeToggleButton);
+
+        memoryLabel = new JLabel("M: 0");
+        memoryLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        controlPanel.add(memoryLabel);
+        topPanel.add(controlPanel, BorderLayout.SOUTH);
+        add(topPanel, BorderLayout.NORTH);
+
+        buttonPanel = new JPanel(new GridLayout(5, 6, 6, 6));
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         for (String label : buttonLabels) {
             JButton button = new JButton(label);
             button.setFont(new Font("Segoe UI", Font.BOLD, 16));
             button.addActionListener(this);
             button.setFocusable(false);
-            button.setBackground(new Color(250, 250, 250));
             buttonPanel.add(button);
         }
         add(buttonPanel, BorderLayout.CENTER);
@@ -54,6 +83,7 @@ public class Calculator extends JFrame implements ActionListener {
             }
         });
 
+        applyTheme();
         setVisible(true);
     }
 
@@ -73,6 +103,22 @@ public class Calculator extends JFrame implements ActionListener {
                 break;
             case "=":
                 calculate();
+                break;
+            case "MC":
+                clearMemory();
+                break;
+            case "MR":
+                recallMemory();
+                break;
+            case "M+":
+                addToMemory(true);
+                break;
+            case "M-":
+                addToMemory(false);
+                break;
+            case "🌙":
+            case "☀":
+                toggleTheme();
                 break;
             case "sin":
                 insertText("sin(");
@@ -123,6 +169,81 @@ public class Calculator extends JFrame implements ActionListener {
         expression.append("0");
         startNewNumber = true;
         display.setText("0");
+    }
+
+    private void clearMemory() {
+        memory = 0.0;
+        hasMemory = false;
+        updateMemoryLabel();
+    }
+
+    private void recallMemory() {
+        if (hasMemory) {
+            expression.setLength(0);
+            expression.append(formatNumber(memory));
+            startNewNumber = false;
+            display.setText(expression.toString());
+        }
+    }
+
+    private void addToMemory(boolean add) {
+        try {
+            double value = evaluateExpression(expression.toString());
+            memory = add ? memory + value : memory - value;
+            hasMemory = true;
+            updateMemoryLabel();
+        } catch (Exception ignored) {
+            // Ignore invalid expressions for memory operations.
+        }
+    }
+
+    private void updateMemoryLabel() {
+        if (memoryLabel != null) {
+            memoryLabel.setText(hasMemory ? "M: " + formatNumber(memory) : "M: 0");
+        }
+    }
+
+    private void toggleTheme() {
+        darkMode = !darkMode;
+        applyTheme();
+    }
+
+    private void applyTheme() {
+        Color background = darkMode ? new Color(24, 28, 35) : new Color(248, 250, 252);
+        Color foreground = darkMode ? new Color(240, 240, 240) : new Color(30, 30, 30);
+        Color controlColor = darkMode ? new Color(42, 49, 58) : new Color(252, 252, 252);
+        Color borderColor = darkMode ? new Color(64, 74, 84) : new Color(220, 220, 220);
+
+        getContentPane().setBackground(background);
+        if (buttonPanel != null) {
+            buttonPanel.setBackground(background);
+        }
+        if (display != null) {
+            display.setBackground(darkMode ? new Color(34, 39, 46) : new Color(255, 255, 255));
+            display.setForeground(foreground);
+            display.setCaretColor(foreground);
+        }
+        if (themeToggleButton != null) {
+            themeToggleButton.setText(darkMode ? "☀" : "🌙");
+            themeToggleButton.setBackground(controlColor);
+            themeToggleButton.setForeground(foreground);
+            themeToggleButton.setBorder(BorderFactory.createLineBorder(borderColor));
+        }
+        if (memoryLabel != null) {
+            memoryLabel.setForeground(foreground);
+        }
+        if (buttonPanel != null) {
+            for (Component component : buttonPanel.getComponents()) {
+                if (component instanceof JButton button) {
+                    button.setBackground(controlColor);
+                    button.setForeground(foreground);
+                    button.setBorder(BorderFactory.createLineBorder(borderColor));
+                }
+            }
+        }
+        if (getContentPane() instanceof JComponent component) {
+            component.repaint();
+        }
     }
 
     private void backspace() {
