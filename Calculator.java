@@ -14,28 +14,28 @@ public class Calculator extends JFrame implements ActionListener {
     private double memory = 0.0;
     private boolean hasMemory = false;
     private boolean darkMode = false;
-    private JPanel buttonPanel;
+    private JPanel scientificPanel;
+    private JPanel keypadPanel;
+    private JPanel historyPanel;
+    private JTextArea historyArea;
     private JButton themeToggleButton;
     private JLabel memoryLabel;
+    private final List<String> historyEntries = new ArrayList<>();
 
-    private final String[] buttonLabels = {
-        "7", "8", "9", "/", "C", "sin",
-        "4", "5", "6", "*", "(", ")",
-        "1", "2", "3", "-", "cos", "tan",
-        "0", ".", "=", "+", "sqrt", "log",
-        "π", "e", "^", "Ans", "ln", "x²"
-    };
+    private final String[] scientificButtons = {"sin", "cos", "tan", "sqrt", "log", "ln", "π", "e", "Ans", "x²", "(", ")"};
+    private final String[] keypadButtons = {"7", "8", "9", "/", "C", "4", "5", "6", "*", "←", "1", "2", "3", "-", "^", "0", ".", "=", "+", "%"};
 
     public Calculator() {
         super("Scientific Calculator");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(460, 560);
+        setSize(860, 640);
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout(8, 8));
+        setLayout(new BorderLayout(10, 10));
+
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
         JPanel topPanel = new JPanel(new BorderLayout(6, 6));
-        topPanel.setBorder(BorderFactory.createEmptyBorder(6, 6, 0, 6));
-
         display = new JTextField("0");
         display.setHorizontalAlignment(SwingConstants.RIGHT);
         display.setEditable(false);
@@ -63,18 +63,43 @@ public class Calculator extends JFrame implements ActionListener {
         memoryLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         controlPanel.add(memoryLabel);
         topPanel.add(controlPanel, BorderLayout.SOUTH);
-        add(topPanel, BorderLayout.NORTH);
+        mainPanel.add(topPanel, BorderLayout.NORTH);
 
-        buttonPanel = new JPanel(new GridLayout(5, 6, 6, 6));
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-        for (String label : buttonLabels) {
-            JButton button = new JButton(label);
-            button.setFont(new Font("Segoe UI", Font.BOLD, 16));
-            button.addActionListener(this);
-            button.setFocusable(false);
-            buttonPanel.add(button);
+        JPanel workspacePanel = new JPanel(new BorderLayout(10, 10));
+
+        JPanel calculatorPanel = new JPanel(new BorderLayout(8, 8));
+        scientificPanel = new JPanel(new GridLayout(2, 6, 6, 6));
+        scientificPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
+        for (String label : scientificButtons) {
+            addButton(scientificPanel, label);
         }
-        add(buttonPanel, BorderLayout.CENTER);
+        calculatorPanel.add(scientificPanel, BorderLayout.NORTH);
+
+        keypadPanel = new JPanel(new GridLayout(4, 5, 6, 6));
+        for (String label : keypadButtons) {
+            addButton(keypadPanel, label);
+        }
+        calculatorPanel.add(keypadPanel, BorderLayout.CENTER);
+        workspacePanel.add(calculatorPanel, BorderLayout.CENTER);
+
+        historyPanel = new JPanel(new BorderLayout(6, 6));
+        historyPanel.setBorder(BorderFactory.createTitledBorder("History"));
+        historyPanel.setPreferredSize(new Dimension(250, 0));
+        historyArea = new JTextArea();
+        historyArea.setEditable(false);
+        historyArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        historyArea.setLineWrap(true);
+        historyArea.setWrapStyleWord(true);
+        JScrollPane scrollPane = new JScrollPane(historyArea);
+        JButton clearHistoryButton = new JButton("Clear History");
+        clearHistoryButton.addActionListener(this);
+        clearHistoryButton.setFocusable(false);
+        historyPanel.add(scrollPane, BorderLayout.CENTER);
+        historyPanel.add(clearHistoryButton, BorderLayout.SOUTH);
+        workspacePanel.add(historyPanel, BorderLayout.EAST);
+
+        mainPanel.add(workspacePanel, BorderLayout.CENTER);
+        add(mainPanel, BorderLayout.CENTER);
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -85,6 +110,14 @@ public class Calculator extends JFrame implements ActionListener {
 
         applyTheme();
         setVisible(true);
+    }
+
+    private void addButton(JPanel panel, String label) {
+        JButton button = new JButton(label);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        button.addActionListener(this);
+        button.setFocusable(false);
+        panel.add(button);
     }
 
     @Override
@@ -115,6 +148,9 @@ public class Calculator extends JFrame implements ActionListener {
                 break;
             case "M-":
                 addToMemory(false);
+                break;
+            case "Clear History":
+                clearHistory();
                 break;
             case "🌙":
             case "☀":
@@ -156,7 +192,7 @@ public class Calculator extends JFrame implements ActionListener {
             default:
                 if ("0123456789".contains(cmd)) {
                     insertDigit(cmd);
-                } else if ("+-*/^".contains(cmd)) {
+                } else if ("+-*/^%".contains(cmd)) {
                     insertOperator(cmd);
                 } else if (cmd.equals("(") || cmd.equals(")")) {
                     insertParenthesis(cmd);
@@ -215,8 +251,17 @@ public class Calculator extends JFrame implements ActionListener {
         Color borderColor = darkMode ? new Color(64, 74, 84) : new Color(220, 220, 220);
 
         getContentPane().setBackground(background);
-        if (buttonPanel != null) {
-            buttonPanel.setBackground(background);
+        if (scientificPanel != null) {
+            scientificPanel.setBackground(background);
+            stylePanelButtons(scientificPanel, controlColor, foreground, borderColor);
+        }
+        if (keypadPanel != null) {
+            keypadPanel.setBackground(background);
+            stylePanelButtons(keypadPanel, controlColor, foreground, borderColor);
+        }
+        if (historyPanel != null) {
+            historyPanel.setBackground(background);
+            historyPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(borderColor), "History"));
         }
         if (display != null) {
             display.setBackground(darkMode ? new Color(34, 39, 46) : new Color(255, 255, 255));
@@ -232,17 +277,21 @@ public class Calculator extends JFrame implements ActionListener {
         if (memoryLabel != null) {
             memoryLabel.setForeground(foreground);
         }
-        if (buttonPanel != null) {
-            for (Component component : buttonPanel.getComponents()) {
-                if (component instanceof JButton button) {
-                    button.setBackground(controlColor);
-                    button.setForeground(foreground);
-                    button.setBorder(BorderFactory.createLineBorder(borderColor));
-                }
-            }
+        if (historyArea != null) {
+            historyArea.setBackground(darkMode ? new Color(34, 39, 46) : new Color(255, 255, 255));
+            historyArea.setForeground(foreground);
         }
-        if (getContentPane() instanceof JComponent component) {
-            component.repaint();
+        repaint();
+    }
+
+    private void stylePanelButtons(JPanel panel, Color controlColor, Color foreground, Color borderColor) {
+        for (int i = 0; i < panel.getComponentCount(); i++) {
+            Component component = panel.getComponent(i);
+            if (component instanceof JButton button) {
+                button.setBackground(controlColor);
+                button.setForeground(foreground);
+                button.setBorder(BorderFactory.createLineBorder(borderColor));
+            }
         }
     }
 
@@ -384,6 +433,7 @@ public class Calculator extends JFrame implements ActionListener {
             lastResult = result;
             hasLastResult = true;
             startNewNumber = true;
+            appendHistory(expr + " = " + resultText);
         } catch (Exception ex) {
             display.setText("Error");
             expression.setLength(0);
@@ -395,6 +445,31 @@ public class Calculator extends JFrame implements ActionListener {
 
     private double evaluateExpression(String expr) throws Exception {
         return new ExpressionParser(expr, lastResult).parse();
+    }
+
+    private void appendHistory(String entry) {
+        historyEntries.add(0, entry);
+        if (historyEntries.size() > 20) {
+            historyEntries.remove(historyEntries.size() - 1);
+        }
+        if (historyArea != null) {
+            StringBuilder builder = new StringBuilder();
+            for (String item : historyEntries) {
+                if (builder.length() > 0) {
+                    builder.append("\n");
+                }
+                builder.append(item);
+            }
+            historyArea.setText(builder.toString());
+            historyArea.setCaretPosition(0);
+        }
+    }
+
+    private void clearHistory() {
+        historyEntries.clear();
+        if (historyArea != null) {
+            historyArea.setText("");
+        }
     }
 
     private String getCurrentNumber() {

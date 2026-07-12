@@ -13,6 +13,8 @@ A modern Java Swing calculator with a scientific mode built for everyday math an
 - Clean desktop-style interface
 - Memory buttons (MC, MR, M+, M-)
 - Theme toggle for light and dark mode
+- History panel for recent calculations
+- Reworked scientific keypad layout with grouped scientific functions
 
 ## Requirements
 
