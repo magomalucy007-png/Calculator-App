@@ -1,41 +1,51 @@
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import javax.swing.*;
 
-public class Calculator extends JFrame implements ActionListener, KeyListener {
-    private JTextField display;
-    private StringBuilder expression = new StringBuilder("0");
+public class Calculator extends JFrame implements ActionListener {
+    private final JTextField display;
+    private final StringBuilder expression = new StringBuilder("0");
     private boolean startNewNumber = true;
-    private final String buttons[] = {
-        "7", "8", "9", "/", "C",
-        "4", "5", "6", "*", "←",
-        "1", "2", "3", "-", "(",
-        "0", ".", "=", "+", ")",
-        "±"
+    private double lastResult = 0.0;
+    private boolean hasLastResult = false;
+
+    private final String[] buttonLabels = {
+        "7", "8", "9", "/", "C", "sin",
+        "4", "5", "6", "*", "(", ")",
+        "1", "2", "3", "-", "cos", "tan",
+        "0", ".", "=", "+", "sqrt", "log",
+        "π", "e", "^", "Ans", "ln", "x²"
     };
 
     public Calculator() {
-        setTitle("Calculator");
+        super("Scientific Calculator");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(300, 400);
-        setLayout(new BorderLayout());
+        setSize(460, 560);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout(6, 6));
 
         display = new JTextField("0");
         display.setHorizontalAlignment(SwingConstants.RIGHT);
         display.setEditable(false);
-        display.setFont(new Font("Arial", Font.BOLD, 28));
+        display.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        display.setBackground(new Color(245, 248, 250));
+        display.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         add(display, BorderLayout.NORTH);
-        display.addKeyListener(this);
 
-        JPanel panel = new JPanel(new GridLayout(5, 5, 5, 5));
-        for (String txt : buttons) {
-            JButton btn = new JButton(txt);
-            btn.setFont(new Font("Arial", Font.BOLD, 22));
-            btn.addActionListener(this);
-            btn.setFocusable(false);
-            panel.add(btn);
+        JPanel buttonPanel = new JPanel(new GridLayout(5, 6, 6, 6));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        for (String label : buttonLabels) {
+            JButton button = new JButton(label);
+            button.setFont(new Font("Segoe UI", Font.BOLD, 16));
+            button.addActionListener(this);
+            button.setFocusable(false);
+            button.setBackground(new Color(250, 250, 250));
+            buttonPanel.add(button);
         }
-        add(panel, BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.CENTER);
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -54,228 +64,470 @@ public class Calculator extends JFrame implements ActionListener, KeyListener {
     }
 
     private void handleInput(String cmd) {
-        if ("0123456789".contains(cmd)) {
-            if (startNewNumber || display.getText().equals("0")) {
-                expression.setLength(0);
-                expression.append(cmd);
-                startNewNumber = false;
-            } else {
-                expression.append(cmd);
-            }
-            display.setText(expression.toString());
-        } else if ("+-*/".contains(cmd)) {
-            if (!startNewNumber) {
-                expression.append(cmd);
-                display.setText(expression.toString());
-                startNewNumber = true;
-            }
-        } else if (cmd.equals(".")) {
-            if (startNewNumber) {
-                expression.setLength(0);
-                expression.append("0.");
-                startNewNumber = false;
-            } else if (!getLastNumber(expression.toString()).contains(".")) {
-                expression.append(".");
-            }
-            display.setText(expression.toString());
-        } else if (cmd.equals("C")) {
-            expression.setLength(0);
-            expression.append("0");
-            display.setText("0");
-            startNewNumber = true;
-        } else if (cmd.equals("←")) {
-            if (!startNewNumber && expression.length() > 0) {
-                expression.deleteCharAt(expression.length() - 1);
-                if (expression.length() == 0) {
-                    expression.append("0");
-                    startNewNumber = true;
+        switch (cmd) {
+            case "C":
+                clear();
+                break;
+            case "←":
+                backspace();
+                break;
+            case "=":
+                calculate();
+                break;
+            case "sin":
+                insertText("sin(");
+                break;
+            case "cos":
+                insertText("cos(");
+                break;
+            case "tan":
+                insertText("tan(");
+                break;
+            case "sqrt":
+                insertText("sqrt(");
+                break;
+            case "log":
+                insertText("log(");
+                break;
+            case "ln":
+                insertText("ln(");
+                break;
+            case "π":
+                insertText("π");
+                break;
+            case "e":
+                insertText("e");
+                break;
+            case "Ans":
+                insertText("Ans");
+                break;
+            case "x²":
+                insertText("^2");
+                break;
+            case ".":
+                insertDecimal();
+                break;
+            default:
+                if ("0123456789".contains(cmd)) {
+                    insertDigit(cmd);
+                } else if ("+-*/^".contains(cmd)) {
+                    insertOperator(cmd);
+                } else if (cmd.equals("(") || cmd.equals(")")) {
+                    insertParenthesis(cmd);
                 }
-                display.setText(expression.toString());
-            }
-        } else if (cmd.equals("±")) {
-            togglePlusMinus();
-        } else if (cmd.equals("=")) {
-            calculate();
-        } else if (cmd.equals("(")) {
-            if (startNewNumber || display.getText().equals("0")) {
-                expression.setLength(0);
-                expression.append("(");
-                startNewNumber = false;
+        }
+    }
+
+    private void clear() {
+        expression.setLength(0);
+        expression.append("0");
+        startNewNumber = true;
+        display.setText("0");
+    }
+
+    private void backspace() {
+        if (expression.length() > 0 && !expression.toString().equals("0")) {
+            expression.deleteCharAt(expression.length() - 1);
+            if (expression.length() == 0) {
+                expression.append("0");
+                startNewNumber = true;
             } else {
-                expression.append("(");
+                startNewNumber = endsWithOperatorOrOpenParen();
             }
-            display.setText(expression.toString());
-        } else if (cmd.equals(")")) {
-            expression.append(")");
             display.setText(expression.toString());
         }
+    }
+
+    private void insertDigit(String digit) {
+        String current = expression.toString();
+        if (startNewNumber) {
+            if (current.equals("0") || current.equals("Error") || current.isEmpty()) {
+                expression.setLength(0);
+                expression.append(digit);
+            } else if (endsWithOperatorOrOpenParen()) {
+                expression.append(digit);
+            } else {
+                expression.setLength(0);
+                expression.append(digit);
+            }
+            startNewNumber = false;
+        } else {
+            expression.append(digit);
+        }
+        display.setText(expression.toString());
+    }
+
+    private void insertOperator(String op) {
+        String current = expression.toString();
+        if (current.equals("Error")) {
+            expression.setLength(0);
+            expression.append("0");
+        }
+        if (current.equals("0") || current.isEmpty()) {
+            if ("-".equals(op)) {
+                expression.setLength(0);
+                expression.append(op);
+                startNewNumber = false;
+                display.setText(expression.toString());
+            }
+            return;
+        }
+        if (endsWithOperatorOrOpenParen()) {
+            if ("-".equals(op) && (current.endsWith("(") || current.endsWith("+") || current.endsWith("-") || current.endsWith("*") || current.endsWith("/") || current.endsWith("^") || current.endsWith("%"))) {
+                expression.append(op);
+            } else {
+                expression.deleteCharAt(expression.length() - 1);
+                expression.append(op);
+            }
+        } else {
+            expression.append(op);
+        }
+        startNewNumber = true;
+        display.setText(expression.toString());
+    }
+
+    private void insertParenthesis(String parenthesis) {
+        String current = expression.toString();
+        if (current.equals("Error") || current.equals("0") || current.isEmpty()) {
+            expression.setLength(0);
+            expression.append(parenthesis);
+        } else if (parenthesis.equals("(") && !endsWithOperatorOrOpenParen()) {
+            expression.append("*");
+            expression.append(parenthesis);
+        } else {
+            expression.append(parenthesis);
+        }
+        startNewNumber = false;
+        display.setText(expression.toString());
+    }
+
+    private void insertDecimal() {
+        String current = expression.toString();
+        if (current.equals("Error") || current.equals("0") || current.isEmpty() || endsWithOperatorOrOpenParen()) {
+            expression.setLength(0);
+            expression.append("0.");
+        } else {
+            String currentNumber = getCurrentNumber();
+            if (!currentNumber.contains(".")) {
+                expression.append(".");
+            }
+        }
+        startNewNumber = false;
+        display.setText(expression.toString());
+    }
+
+    private void insertText(String text) {
+        String current = expression.toString();
+        if (current.equals("Error")) {
+            expression.setLength(0);
+            expression.append("0");
+        }
+        if ("Ans".equals(text)) {
+            if (hasLastResult) {
+                if (startNewNumber || current.equals("0") || current.isEmpty()) {
+                    expression.setLength(0);
+                    expression.append(formatNumber(lastResult));
+                } else {
+                    expression.append(formatNumber(lastResult));
+                }
+            } else {
+                expression.setLength(0);
+                expression.append("0");
+            }
+        } else {
+            if (startNewNumber) {
+                expression.setLength(0);
+                expression.append(text);
+            } else {
+                expression.append(text);
+            }
+        }
+        startNewNumber = false;
+        display.setText(expression.toString());
     }
 
     private void calculate() {
         String expr = expression.toString();
-        while (expr.endsWith("+") || expr.endsWith("-") || expr.endsWith("*") || expr.endsWith("/")) {
-            expr = expr.substring(0, expr.length() - 1);
+        if (expr.equals("0") || expr.equals("Error") || expr.isEmpty()) {
+            return;
         }
         try {
             double result = evaluateExpression(expr);
-            String resultStr = (result == (long) result) ? String.valueOf((long) result) : String.valueOf(result);
-            display.setText(resultStr);
+            if (Double.isNaN(result) || Double.isInfinite(result)) {
+                throw new Exception("Invalid result");
+            }
+            String resultText = formatNumber(result);
+            display.setText(resultText);
             expression.setLength(0);
-            expression.append(resultStr);
+            expression.append(resultText);
+            lastResult = result;
+            hasLastResult = true;
             startNewNumber = true;
-        } catch (Exception e) {
+        } catch (Exception ex) {
             display.setText("Error");
             expression.setLength(0);
             expression.append("0");
             startNewNumber = true;
+            hasLastResult = false;
         }
     }
 
     private double evaluateExpression(String expr) throws Exception {
-        return new ExprParser(expr).parse();
+        return new ExpressionParser(expr, lastResult).parse();
     }
 
-    private static class ExprParser {
-        String expr;
-        int pos = 0;
+    private String getCurrentNumber() {
+        int end = expression.length();
+        int idx = end - 1;
+        while (idx >= 0 && (Character.isDigit(expression.charAt(idx)) || expression.charAt(idx) == '.')) {
+            idx--;
+        }
+        return expression.substring(idx + 1);
+    }
 
-        ExprParser(String expr) {
-            this.expr = expr;
+    private boolean endsWithOperatorOrOpenParen() {
+        String current = expression.toString();
+        return current.endsWith("+") || current.endsWith("-") || current.endsWith("*") || current.endsWith("/") || current.endsWith("^") || current.endsWith("%") || current.endsWith("(");
+    }
+
+    private String formatNumber(double value) {
+        if (Math.abs(value) < 1e-12) {
+            value = 0.0;
+        }
+        if (value == (long) value) {
+            return String.valueOf((long) value);
+        }
+        return String.format(Locale.US, "%.10g", value);
+    }
+
+    private static class ExpressionParser {
+        private final String expression;
+        private final double lastResult;
+        private int index = 0;
+        private final List<Token> tokens;
+
+        ExpressionParser(String expression, double lastResult) throws Exception {
+            this.expression = expression;
+            this.lastResult = lastResult;
+            this.tokens = tokenize(expression);
         }
 
         double parse() throws Exception {
-            double result = parseAddSubtract();
-            if (pos < expr.length()) throw new Exception("Unexpected character at position " + pos);
-            return result;
-        }
-
-        double parseAddSubtract() throws Exception {
-            double result = parseMultiplyDivide();
-            while (pos < expr.length() && (expr.charAt(pos) == '+' || expr.charAt(pos) == '-')) {
-                char op = expr.charAt(pos++);
-                double right = parseMultiplyDivide();
-                result = op == '+' ? result + right : result - right;
+            double value = parseAddition();
+            if (peek().type != TokenType.EOF) {
+                throw new Exception("Unexpected token");
             }
-            return result;
+            return value;
         }
 
-        double parseMultiplyDivide() throws Exception {
-            double result = parseUnary();
-            while (pos < expr.length() && (expr.charAt(pos) == '*' || expr.charAt(pos) == '/')) {
-                char op = expr.charAt(pos++);
+        private double parseAddition() throws Exception {
+            double value = parseMultiplication();
+            while (match("+", "-")) {
+                String op = previous().value;
+                double right = parseMultiplication();
+                value = "+".equals(op) ? value + right : value - right;
+            }
+            return value;
+        }
+
+        private double parseMultiplication() throws Exception {
+            double value = parseUnary();
+            while (match("*", "/", "%")) {
+                String op = previous().value;
                 double right = parseUnary();
-                result = op == '*' ? result * right : result / right;
+                if ("*".equals(op)) {
+                    value *= right;
+                } else if ("/".equals(op)) {
+                    if (right == 0.0) {
+                        throw new Exception("Division by zero");
+                    }
+                    value /= right;
+                } else {
+                    value %= right;
+                }
             }
-            return result;
+            return value;
         }
 
-        double parseUnary() throws Exception {
-            if (pos < expr.length() && expr.charAt(pos) == '-') {
-                pos++;
+        private double parseUnary() throws Exception {
+            if (match("+")) {
+                return parseUnary();
+            }
+            if (match("-")) {
                 return -parseUnary();
             }
-            return parsePrimary();
+            return parsePower();
         }
 
-        double parsePrimary() throws Exception {
-            if (pos < expr.length() && expr.charAt(pos) == '(') {
-                pos++;
-                double result = parseAddSubtract();
-                if (pos >= expr.length() || expr.charAt(pos) != ')') 
+        private double parsePower() throws Exception {
+            double value = parsePrimary();
+            if (match("^")) {
+                double exponent = parsePower();
+                return Math.pow(value, exponent);
+            }
+            return value;
+        }
+
+        private double parsePrimary() throws Exception {
+            Token token = peek();
+            if (token.type == TokenType.NUMBER) {
+                index++;
+                return token.number;
+            }
+            if (token.type == TokenType.IDENT) {
+                String name = advance().value;
+                if ("ans".equals(name)) {
+                    return lastResult;
+                }
+                if ("π".equals(name) || "pi".equals(name)) {
+                    return Math.PI;
+                }
+                if ("e".equals(name)) {
+                    return Math.E;
+                }
+                if ("sin".equals(name) || "cos".equals(name) || "tan".equals(name) || "sqrt".equals(name) || "log".equals(name) || "ln".equals(name)) {
+                    double argument = parseFunctionArgument();
+                    switch (name) {
+                        case "sin":
+                            return Math.sin(Math.toRadians(argument));
+                        case "cos":
+                            return Math.cos(Math.toRadians(argument));
+                        case "tan":
+                            return Math.tan(Math.toRadians(argument));
+                        case "sqrt":
+                            return Math.sqrt(argument);
+                        case "log":
+                            return Math.log10(argument);
+                        case "ln":
+                            return Math.log(argument);
+                        default:
+                            throw new Exception("Unsupported function");
+                    }
+                }
+                throw new Exception("Unknown identifier: " + name);
+            }
+            if (match("(")) {
+                double value = parseAddition();
+                if (!match(")")) {
                     throw new Exception("Missing closing parenthesis");
-                pos++;
-                return result;
+                }
+                return value;
             }
-            return parseNumber();
+            throw new Exception("Unexpected token");
         }
 
-        double parseNumber() throws Exception {
-            int start = pos;
-            if (pos < expr.length() && expr.charAt(pos) == '-') pos++;
-            while (pos < expr.length() && Character.isDigit(expr.charAt(pos))) pos++;
-            if (pos < expr.length() && expr.charAt(pos) == '.') {
-                pos++;
-                while (pos < expr.length() && Character.isDigit(expr.charAt(pos))) pos++;
+        private double parseFunctionArgument() throws Exception {
+            if (match("(")) {
+                double value = parseAddition();
+                if (!match(")")) {
+                    throw new Exception("Missing closing parenthesis");
+                }
+                return value;
             }
-            if (start == pos) throw new Exception("Invalid number at position " + pos);
-            return Double.parseDouble(expr.substring(start, pos));
+            return parseUnary();
+        }
+
+        private Token peek() {
+            if (index < tokens.size()) {
+                return tokens.get(index);
+            }
+            return new Token(TokenType.EOF, "");
+        }
+
+        private Token previous() {
+            return tokens.get(index - 1);
+        }
+
+        private Token advance() {
+            return tokens.get(index++);
+        }
+
+        private boolean match(String... values) {
+            Token token = peek();
+            for (String value : values) {
+                if (token.value.equals(value)) {
+                    index++;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private List<Token> tokenize(String input) throws Exception {
+            List<Token> result = new ArrayList<>();
+            int i = 0;
+            while (i < input.length()) {
+                char ch = input.charAt(i);
+                if (Character.isWhitespace(ch)) {
+                    i++;
+                    continue;
+                }
+                if (Character.isDigit(ch) || ch == '.') {
+                    int start = i;
+                    boolean seenDot = false;
+                    while (i < input.length()) {
+                        char current = input.charAt(i);
+                        if (current == '.') {
+                            if (seenDot) {
+                                break;
+                            }
+                            seenDot = true;
+                            i++;
+                            continue;
+                        }
+                        if (Character.isDigit(current)) {
+                            i++;
+                            continue;
+                        }
+                        break;
+                    }
+                    String numberText = input.substring(start, i);
+                    result.add(new Token(TokenType.NUMBER, numberText, Double.parseDouble(numberText)));
+                    continue;
+                }
+                if (Character.isLetter(ch) || ch == 'π') {
+                    int start = i;
+                    while (i < input.length() && (Character.isLetter(input.charAt(i)) || input.charAt(i) == 'π')) {
+                        i++;
+                    }
+                    String ident = input.substring(start, i).toLowerCase(Locale.US);
+                    result.add(new Token(TokenType.IDENT, ident));
+                    continue;
+                }
+                if ("+-*/^%()".indexOf(ch) >= 0) {
+                    result.add(new Token(TokenType.OPERATOR, String.valueOf(ch)));
+                    i++;
+                    continue;
+                }
+                throw new Exception("Unexpected character: " + ch);
+            }
+            result.add(new Token(TokenType.EOF, ""));
+            return result;
         }
     }
 
-    private void togglePlusMinus() {
-        String expr = expression.toString();
-        int[] lastIdx = getLastNumberIndex(expr);
-        if (lastIdx[0] >= lastIdx[1]) return;
-        int start = lastIdx[0];
-        int end = lastIdx[1];
-        String number = expr.substring(start, end);
-        if (number.isEmpty() || number.equals("0")) return;
-        StringBuilder newExpr = new StringBuilder();
-        newExpr.append(expr, 0, start);
-        if (number.startsWith("-")) {
-            newExpr.append(number.substring(1));
-        } else {
-            newExpr.append("-").append(number);
-        }
-        if (end < expr.length()) {
-            newExpr.append(expr.substring(end));
-        }
-        expression = newExpr;
-        display.setText(expression.toString());
-    }
+    private static class Token {
+        private final TokenType type;
+        private final String value;
+        private final double number;
 
-    private String getLastNumber(String expr) {
-        int i = expr.length() - 1;
-        while (i >= 0 && (Character.isDigit(expr.charAt(i)) || expr.charAt(i) == '.')) i--;
-        return expr.substring(i + 1);
-    }
-
-    private int[] getLastNumberIndex(String expr) {
-        int end = expr.length();
-        int i = end - 1;
-        int par = 0;
-        while (i >= 0) {
-            char c = expr.charAt(i);
-            if (c == ')') par++;
-            if (c == '(') par--;
-            if (Character.isDigit(c) || c == '.' || (c == '-' && (i == 0 || "+-*/(".contains("" + expr.charAt(i-1))))) {
-                if (par == 0) i--;
-                else break;
-            } else break;
+        Token(TokenType type, String value) {
+            this(type, value, 0.0);
         }
-        int start = i + 1;
-        return new int[] { start, end };
-    }
 
-    @Override
-    public void keyTyped(KeyEvent e) {
-        char c = e.getKeyChar();
-        if (Character.isDigit(c)) {
-            handleInput("" + c);
-        } else if ("+-*/".indexOf(c) != -1) {
-            handleInput("" + c);
-        } else if (c == '\n' || c == '=') {
-            handleInput("=");
-        } else if (c == '.' || c == ',') {
-            handleInput(".");
-        } else if (c == '(') {
-            handleInput("(");
-        } else if (c == ')') {
-            handleInput(")");
-        } else if (c == 'c' || c == 'C' || c == 27) {
-            handleInput("C");
-        } else if (c == '\b') {
-            handleInput("←");
-        } else if (c == 'n' || c == 'N') {
-            handleInput("±");
+        Token(TokenType type, String value, double number) {
+            this.type = type;
+            this.value = value;
+            this.number = number;
         }
     }
 
-    @Override
-    public void keyPressed(KeyEvent e) {}
-
-    @Override
-    public void keyReleased(KeyEvent e) {}
+    private enum TokenType {
+        NUMBER,
+        IDENT,
+        OPERATOR,
+        EOF
+    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(Calculator::new);
