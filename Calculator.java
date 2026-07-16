@@ -1,47 +1,105 @@
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.RoundRectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import javax.swing.*;
-
+import javax.swing.border.Border;
 public class Calculator extends JFrame implements ActionListener {
     private final JTextField display;
+    private final JTextField resultField;
+    private final JTextArea stepsArea;
     private final StringBuilder expression = new StringBuilder("0");
     private boolean startNewNumber = true;
     private double lastResult = 0.0;
     private boolean hasLastResult = false;
     private double memory = 0.0;
     private boolean hasMemory = false;
+    private String lastExpression = "";
+    private String lastResultText = "";
     private boolean darkMode = false;
+    private boolean useDegrees = true;
+    private boolean invMode = false;
+    private JButton degRadButton;
+    private JButton invToggleButton;
     private JPanel scientificPanel;
     private JPanel keypadPanel;
     private JPanel historyPanel;
-    private JTextArea historyArea;
+    private JList<HistoryEntry> historyListView;
+    private DefaultListModel<HistoryEntry> historyListModel;
+    private JTextArea historyStepsArea;
+    private JTextArea formulaArea;
     private JButton themeToggleButton;
     private JLabel memoryLabel;
-    private final List<String> historyEntries = new ArrayList<>();
+    private JLabel statusLabel;
+    private JLabel challengeLabel;
+    private JLabel challengeStatusLabel;
+    private JComboBox<String> formulaSelect;
+    private JButton challengeButton;
+    private final List<HistoryEntry> historyList = new ArrayList<>();
+    private GradientPanel rootPanel;
+    private int challengeScore = 0;
+    private int challengeAttempts = 0;
+    private Challenge currentChallenge;
+    private final Random random = new Random();
+    private boolean showSteps = true;
 
-    private final String[] scientificButtons = {"sin", "cos", "tan", "sqrt", "log", "ln", "π", "e", "Ans", "x²", "(", ")"};
+    private final String[] scientificButtons = {"sin", "cos", "tan", "√", "log", "ln", "π", "e", "Ans", "x²", "(", ")"};
     private final String[] keypadButtons = {"7", "8", "9", "/", "C", "4", "5", "6", "*", "←", "1", "2", "3", "-", "^", "0", ".", "=", "+", "%"};
 
     public Calculator() {
-        super("Scientific Calculator");
+        super("QuantCalc");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(860, 640);
+        setSize(980, 720);
         setLocationRelativeTo(null);
+        setResizable(false);
         setLayout(new BorderLayout(10, 10));
 
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        JPanel mainPanel = new GlassPanel(new Color(255, 255, 255, 140), new Color(255, 255, 255, 200), 30);
+        mainPanel.setLayout(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
-        JPanel topPanel = new JPanel(new BorderLayout(6, 6));
+        JPanel topPanel = new GlassPanel(new Color(255, 255, 255, 120), new Color(255, 255, 255, 220), 24);
+        topPanel.setLayout(new BorderLayout(8, 8));
+        topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         display = new JTextField("0");
         display.setHorizontalAlignment(SwingConstants.RIGHT);
         display.setEditable(false);
-        display.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        display.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        topPanel.add(display, BorderLayout.CENTER);
+        display.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        display.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(180, 195, 220), 1, true),
+            BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+
+        resultField = new JTextField("");
+        resultField.setHorizontalAlignment(SwingConstants.RIGHT);
+        resultField.setEditable(false);
+        resultField.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        resultField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(180, 195, 220), 1, true),
+            BorderFactory.createEmptyBorder(12, 14, 12, 14)));
+
+        JPanel displayPanel = new JPanel(new BorderLayout(6, 6));
+        displayPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        JLabel titleLabel = new JLabel("QuantCalc");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 0));
+        displayPanel.add(titleLabel, BorderLayout.NORTH);
+        Box v = Box.createVerticalBox();
+        JLabel exprLabel = new JLabel("Expression");
+        exprLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        exprLabel.setBorder(BorderFactory.createEmptyBorder(2,2,6,2));
+        v.add(exprLabel);
+        v.add(display);
+        v.add(Box.createVerticalStrut(6));
+        JLabel resLabel = new JLabel("Result");
+        resLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        resLabel.setBorder(BorderFactory.createEmptyBorder(2,2,6,2));
+        v.add(resLabel);
+        v.add(resultField);
+        displayPanel.add(v, BorderLayout.CENTER);
+        topPanel.add(displayPanel, BorderLayout.CENTER);
 
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         String[] memoryButtons = {"MC", "MR", "M+", "M-"};
@@ -53,11 +111,46 @@ public class Calculator extends JFrame implements ActionListener {
             controlPanel.add(button);
         }
 
+        JButton formulaButton = new JButton("Use Formula");
+        formulaButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        formulaButton.addActionListener(this);
+        formulaButton.setFocusable(false);
+        controlPanel.add(formulaButton);
+
+        JButton explainButton = new JButton("Explain");
+        explainButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        explainButton.addActionListener(this);
+        explainButton.setFocusable(false);
+        controlPanel.add(explainButton);
+
+        JButton graphButton = new JButton("Graph");
+        graphButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        graphButton.addActionListener(this);
+        graphButton.setFocusable(false);
+        controlPanel.add(graphButton);
+
+        challengeButton = new JButton("Challenge Me");
+        challengeButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        challengeButton.addActionListener(this);
+        challengeButton.setFocusable(false);
+        controlPanel.add(challengeButton);
+
         themeToggleButton = new JButton("🌙");
         themeToggleButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
         themeToggleButton.addActionListener(this);
         themeToggleButton.setFocusable(false);
         controlPanel.add(themeToggleButton);
+        degRadButton = new JButton("Deg");
+        degRadButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        degRadButton.addActionListener(this);
+        degRadButton.setFocusable(false);
+        controlPanel.add(degRadButton);
+
+        invToggleButton = new JButton("Inv");
+        invToggleButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        invToggleButton.addActionListener(this);
+        invToggleButton.setFocusable(false);
+        controlPanel.add(invToggleButton);
 
         memoryLabel = new JLabel("M: 0");
         memoryLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -67,39 +160,183 @@ public class Calculator extends JFrame implements ActionListener {
 
         JPanel workspacePanel = new JPanel(new BorderLayout(10, 10));
 
-        JPanel calculatorPanel = new JPanel(new BorderLayout(8, 8));
-        scientificPanel = new JPanel(new GridLayout(2, 6, 6, 6));
-        scientificPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
+        JPanel calculatorPanel = new GlassPanel(new Color(255, 255, 255, 90), new Color(255, 255, 255, 180), 22);
+        calculatorPanel.setLayout(new BorderLayout(8, 8));
+        calculatorPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        scientificPanel = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 18);
+        scientificPanel.setLayout(new GridLayout(2, 6, 6, 6));
+        scientificPanel.setBorder(BorderFactory.createEmptyBorder(4, 4, 6, 4));
         for (String label : scientificButtons) {
             addButton(scientificPanel, label);
         }
         calculatorPanel.add(scientificPanel, BorderLayout.NORTH);
 
-        keypadPanel = new JPanel(new GridLayout(4, 5, 6, 6));
+        keypadPanel = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 18);
+        keypadPanel.setLayout(new GridLayout(4, 5, 6, 6));
+        keypadPanel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
         for (String label : keypadButtons) {
             addButton(keypadPanel, label);
         }
         calculatorPanel.add(keypadPanel, BorderLayout.CENTER);
         workspacePanel.add(calculatorPanel, BorderLayout.CENTER);
 
-        historyPanel = new JPanel(new BorderLayout(6, 6));
-        historyPanel.setBorder(BorderFactory.createTitledBorder("History"));
-        historyPanel.setPreferredSize(new Dimension(250, 0));
-        historyArea = new JTextArea();
-        historyArea.setEditable(false);
-        historyArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        historyArea.setLineWrap(true);
-        historyArea.setWrapStyleWord(true);
-        JScrollPane scrollPane = new JScrollPane(historyArea);
+        historyPanel = new GlassPanel(new Color(255, 255, 255, 100), new Color(255, 255, 255, 200), 22);
+        historyPanel.setLayout(new BorderLayout(6, 6));
+        historyPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(180, 195, 220)), "History"),
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)));
+        historyPanel.setPreferredSize(new Dimension(300, 0));
+        historyListModel = new DefaultListModel<>();
+        historyListView = new JList<>(historyListModel);
+        historyListView.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        historyListView.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        historyListView.setVisibleRowCount(8);
+        historyListView.setSelectionBackground(new Color(120, 77, 255));
+        historyListView.setSelectionForeground(Color.WHITE);
+        historyListView.setToolTipText("Click an entry to view its steps.");
+        historyListView.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean selected, boolean hasFocus) {
+                super.getListCellRendererComponent(list, value, index, selected, hasFocus);
+                if (value instanceof HistoryEntry entry) {
+                    setText(entry.header);
+                }
+                setOpaque(true);
+                return this;
+            }
+        });
+        historyListView.addListSelectionListener(ev -> {
+            if (!ev.getValueIsAdjusting()) {
+                updateHistoryDetail();
+            }
+        });
+        historyListView.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent ev) {
+                updateHistoryDetail();
+            }
+        });
+        JScrollPane historyListScroll = new JScrollPane(historyListView);
+
+        historyStepsArea = new JTextArea();
+        historyStepsArea.setEditable(false);
+        historyStepsArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        historyStepsArea.setLineWrap(true);
+        historyStepsArea.setWrapStyleWord(true);
+        historyStepsArea.setText("Select a history entry to view the calculated steps.");
+        historyStepsArea.setBackground(new Color(18, 22, 32));
+        historyStepsArea.setForeground(Color.WHITE);
+        JScrollPane historyStepsScroll = new JScrollPane(historyStepsArea);
+        JSplitPane historySplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, historyListScroll, historyStepsScroll);
+        historySplit.setResizeWeight(0.35);
+        historySplit.setBorder(null);
+
+        JPanel assistantPanel = new GlassPanel(new Color(255, 255, 255, 85), new Color(255, 255, 255, 180), 20);
+        assistantPanel.setLayout(new BorderLayout(6, 6));
+        assistantPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+        JPanel formulaControls = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 16);
+        formulaControls.setLayout(new BorderLayout(6, 6));
+        formulaControls.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        formulaSelect = new JComboBox<>(new String[]{"Circle", "Triangle", "Rectangle", "Pythagoras", "Quadratic equation", "Simple Interest", "Compound Interest"});
+        formulaSelect.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        formulaControls.add(formulaSelect, BorderLayout.CENTER);
+
+        JButton formulaActionButton = new JButton("Apply Formula");
+        formulaActionButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        formulaActionButton.addActionListener(this);
+        formulaActionButton.setFocusable(false);
+        formulaControls.add(formulaActionButton, BorderLayout.EAST);
+
+        formulaArea = new JTextArea();
+        formulaArea.setEditable(false);
+        formulaArea.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        formulaArea.setLineWrap(true);
+        formulaArea.setWrapStyleWord(true);
+        JScrollPane formulaScroll = new JScrollPane(formulaArea);
+        formulaScroll.setPreferredSize(new Dimension(0, 110));
+
+        stepsArea = new JTextArea();
+        stepsArea.setEditable(false);
+        stepsArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        stepsArea.setLineWrap(true);
+        stepsArea.setWrapStyleWord(true);
+        stepsArea.setBackground(new Color(18, 22, 32));
+        stepsArea.setForeground(Color.WHITE);
+        JScrollPane stepsScroll = new JScrollPane(stepsArea);
+        stepsScroll.setPreferredSize(new Dimension(0, 180));
+
+        challengeLabel = new JLabel("Challenge: ready");
+        challengeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        challengeStatusLabel = new JLabel("Score: 0/0");
+        challengeStatusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+
+        statusLabel = new JLabel("Ready to calculate");
+        statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+
+        Box infoBox = Box.createVerticalBox();
+        infoBox.add(challengeLabel);
+        infoBox.add(challengeStatusLabel);
+        infoBox.add(Box.createVerticalStrut(4));
+        infoBox.add(statusLabel);
+
+        assistantPanel.add(formulaControls, BorderLayout.NORTH);
+        assistantPanel.add(formulaScroll, BorderLayout.CENTER);
+        JCheckBox showStepsCheck = new JCheckBox("Show Steps", true);
+        showStepsCheck.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        showStepsCheck.addActionListener(ev -> {
+            showSteps = showStepsCheck.isSelected();
+            refreshHistoryDisplay();
+        });
+        Box southBox = Box.createVerticalBox();
+        southBox.add(infoBox);
+        southBox.add(Box.createVerticalStrut(6));
+        southBox.add(showStepsCheck);
+        assistantPanel.add(southBox, BorderLayout.SOUTH);
+
         JButton clearHistoryButton = new JButton("Clear History");
         clearHistoryButton.addActionListener(this);
         clearHistoryButton.setFocusable(false);
-        historyPanel.add(scrollPane, BorderLayout.CENTER);
-        historyPanel.add(clearHistoryButton, BorderLayout.SOUTH);
+
+        JPanel historyBottom = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 16);
+        historyBottom.setLayout(new BorderLayout(6, 6));
+        historyBottom.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        historyBottom.add(assistantPanel, BorderLayout.CENTER);
+        historyBottom.add(clearHistoryButton, BorderLayout.SOUTH);
+
+        // rightTabs removed; use split history pane instead
+        historyPanel.add(historySplit, BorderLayout.CENTER);
+        historyPanel.add(historyBottom, BorderLayout.SOUTH);
+        // Left: formula library
+        JPanel leftPanel = new GlassPanel(new Color(255,255,255,80), new Color(255,255,255,180), 20);
+        leftPanel.setLayout(new BorderLayout(6,6));
+        leftPanel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder("Formulas"), BorderFactory.createEmptyBorder(6,6,6,6)));
+        DefaultListModel<String> catModel = new DefaultListModel<>();
+        catModel.addElement("Geometry");
+        catModel.addElement("Algebra");
+        catModel.addElement("Finance");
+        catModel.addElement("Physics");
+        catModel.addElement("Statistics");
+        JList<String> catList = new JList<>(catModel);
+        catList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        catList.addListSelectionListener(ev -> {
+            if (!ev.getValueIsAdjusting()) {
+                String sel = catList.getSelectedValue();
+                if (sel != null) showFormulasForCategory(sel);
+            }
+        });
+        leftPanel.add(new JScrollPane(catList), BorderLayout.CENTER);
+        leftPanel.setPreferredSize(new Dimension(160,0));
+        workspacePanel.add(leftPanel, BorderLayout.WEST);
+
         workspacePanel.add(historyPanel, BorderLayout.EAST);
 
         mainPanel.add(workspacePanel, BorderLayout.CENTER);
-        add(mainPanel, BorderLayout.CENTER);
+        rootPanel = new GradientPanel();
+        rootPanel.setLayout(new BorderLayout(10, 10));
+        rootPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        rootPanel.add(mainPanel, BorderLayout.CENTER);
+        setContentPane(rootPanel);
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -108,13 +345,38 @@ public class Calculator extends JFrame implements ActionListener {
             }
         });
 
+        bindKeyboardShortcuts();
         applyTheme();
         setVisible(true);
     }
 
+    private void showFormulasForCategory(String category) {
+        // Simple stub: populate formulaSelect and formulaArea with category examples
+        switch (category) {
+            case "Geometry" -> {
+                formulaSelect.setSelectedItem("Circle");
+                formulaArea.setText("Circle area: A = πr²\nEnter radius when Apply Formula is pressed.");
+            }
+            case "Algebra" -> {
+                formulaSelect.setSelectedItem("Quadratic equation");
+                formulaArea.setText("Quadratic formula: x = (-b ± √(b² - 4ac))/2a\nUse Apply Formula to compute roots.");
+            }
+            case "Finance" -> {
+                formulaSelect.setSelectedItem("Simple Interest");
+                formulaArea.setText("Simple Interest: SI = P × R × T / 100\nUse Apply Formula to compute.");
+            }
+            default -> formulaArea.setText(category + " formulas coming soon.");
+        }
+    }
+
     private void addButton(JPanel panel, String label) {
-        JButton button = new JButton(label);
+        JButton button = new RoundedButton(label);
         button.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setBorder(new RoundedBorder(16, new Color(190, 200, 212), 1));
         button.addActionListener(this);
         button.setFocusable(false);
         panel.add(button);
@@ -122,8 +384,113 @@ public class Calculator extends JFrame implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        String cmd = ((JButton) e.getSource()).getText();
-        handleInput(cmd);
+        Object source = e.getSource();
+        if (source instanceof JButton button) {
+            handleInput(button.getText());
+        }
+    }
+
+    private void bindKeyboardShortcuts() {
+        JComponent root = (JComponent) getContentPane();
+        InputMap inputMap = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = root.getActionMap();
+
+        for (char ch = '0'; ch <= '9'; ch++) {
+            final char currentDigit = ch;
+            String key = "typed " + currentDigit;
+            inputMap.put(KeyStroke.getKeyStroke(key), "digit-" + currentDigit);
+            actionMap.put("digit-" + currentDigit, new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    handleInput(String.valueOf(currentDigit));
+                }
+            });
+        }
+
+        inputMap.put(KeyStroke.getKeyStroke("typed ."), "decimal");
+        actionMap.put("decimal", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleInput(".");
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke("typed +"), "plus");
+        actionMap.put("plus", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleInput("+");
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke("typed -"), "minus");
+        actionMap.put("minus", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleInput("-");
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke("typed *"), "multiply");
+        actionMap.put("multiply", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleInput("*");
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke("typed /"), "divide");
+        actionMap.put("divide", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleInput("/");
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke("typed %"), "percent");
+        actionMap.put("percent", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleInput("%");
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke("typed ^"), "power");
+        actionMap.put("power", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleInput("^");
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke("typed ("), "open");
+        actionMap.put("open", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleInput("(");
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke("typed )"), "close");
+        actionMap.put("close", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleInput(")");
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "equals");
+        actionMap.put("equals", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                calculate();
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "backspace");
+        actionMap.put("backspace", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                backspace();
+            }
+        });
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "clear");
+        actionMap.put("clear", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                clear();
+            }
+        });
     }
 
     private void handleInput(String cmd) {
@@ -152,27 +519,56 @@ public class Calculator extends JFrame implements ActionListener {
             case "Clear History":
                 clearHistory();
                 break;
+            case "Use Formula":
+                applyFormula();
+                break;
+            case "Apply Formula":
+                applyFormula();
+                break;
+            case "Challenge Me":
+                startChallenge();
+                break;
+            case "Explain":
+                applyExplain();
+                break;
+            case "Graph":
+                openGraph();
+                break;
             case "🌙":
             case "☀":
                 toggleTheme();
                 break;
+            case "Deg":
+            case "Rad":
+                useDegrees = !useDegrees;
+                if (degRadButton != null) degRadButton.setText(useDegrees ? "Deg" : "Rad");
+                updateStatus(useDegrees ? "Using degrees" : "Using radians");
+                break;
+            case "Inv":
+                invMode = !invMode;
+                if (invToggleButton != null) invToggleButton.setText(invMode ? "Inv*" : "Inv");
+                updateStatus(invMode ? "Inverse trig ON" : "Inverse trig OFF");
+                break;
             case "sin":
-                insertText("sin(");
+                insertText(invMode ? "asin(" : "sin(");
                 break;
             case "cos":
-                insertText("cos(");
+                insertText(invMode ? "acos(" : "cos(");
                 break;
             case "tan":
-                insertText("tan(");
+                insertText(invMode ? "atan(" : "tan(");
                 break;
-            case "sqrt":
-                insertText("sqrt(");
+            case "√":
+                insertText("√(");
                 break;
             case "log":
                 insertText("log(");
                 break;
             case "ln":
                 insertText("ln(");
+                break;
+            case "!":
+                insertText("!");
                 break;
             case "π":
                 insertText("π");
@@ -205,12 +601,18 @@ public class Calculator extends JFrame implements ActionListener {
         expression.append("0");
         startNewNumber = true;
         display.setText("0");
+        resultField.setText("");
+        stepsArea.setText("");
+        lastExpression = "";
+        lastResultText = "";
+        updateStatus("Ready to calculate");
     }
 
     private void clearMemory() {
         memory = 0.0;
         hasMemory = false;
         updateMemoryLabel();
+        updateStatus("Memory cleared");
     }
 
     private void recallMemory() {
@@ -219,17 +621,19 @@ public class Calculator extends JFrame implements ActionListener {
             expression.append(formatNumber(memory));
             startNewNumber = false;
             display.setText(expression.toString());
+            updateStatus("Memory recalled");
         }
     }
 
     private void addToMemory(boolean add) {
         try {
-            double value = evaluateExpression(expression.toString());
+            double value = evaluateExpression(expression.toString()).value;
             memory = add ? memory + value : memory - value;
             hasMemory = true;
             updateMemoryLabel();
+            updateStatus("Saved to memory");
         } catch (Exception ignored) {
-            // Ignore invalid expressions for memory operations.
+            updateStatus("Unable to store to memory");
         }
     }
 
@@ -245,54 +649,150 @@ public class Calculator extends JFrame implements ActionListener {
     }
 
     private void applyTheme() {
-        Color background = darkMode ? new Color(24, 28, 35) : new Color(248, 250, 252);
-        Color foreground = darkMode ? new Color(240, 240, 240) : new Color(30, 30, 30);
-        Color controlColor = darkMode ? new Color(42, 49, 58) : new Color(252, 252, 252);
-        Color borderColor = darkMode ? new Color(64, 74, 84) : new Color(220, 220, 220);
+        // Purple theme palette
+        Color bgPrimary = new Color(18, 24, 38); // #121826
+        Color btnColor = new Color(42, 49, 66); // #2A3142
+        Color opColor = new Color(124, 77, 255); // #7C4DFF
+        Color eqColor = new Color(106, 90, 249); // #6A5AF9
+        Color textColor = Color.WHITE;
+        Color background = darkMode ? bgPrimary : new Color(242, 248, 255);
+        Color foreground = darkMode ? new Color(240, 240, 240) : new Color(28, 34, 44);
+        Color controlColor = darkMode ? new Color(44, 54, 71) : new Color(255, 255, 255);
+        Color borderColor = darkMode ? new Color(85, 100, 120) : new Color(196, 208, 223);
+        Color accentColor = darkMode ? new Color(74, 144, 226) : new Color(67, 120, 197);
+        Color glassFill = darkMode ? new Color(35, 43, 58, 200) : new Color(255, 255, 255, 160);
+        Color glassBorder = darkMode ? new Color(95, 110, 130, 220) : new Color(220, 230, 242, 220);
 
-        getContentPane().setBackground(background);
+        if (rootPanel != null) {
+            rootPanel.setGradientColors(
+                darkMode ? new Color(20, 22, 36) : new Color(92, 128, 255),
+                darkMode ? new Color(26, 18, 46) : new Color(174, 132, 255));
+            rootPanel.repaint();
+        }
         if (scientificPanel != null) {
-            scientificPanel.setBackground(background);
-            stylePanelButtons(scientificPanel, controlColor, foreground, borderColor);
+            scientificPanel.setBackground(bgPrimary);
+            stylePanelButtonsWithPalette(scientificPanel, btnColor, textColor, opColor, eqColor);
         }
         if (keypadPanel != null) {
-            keypadPanel.setBackground(background);
-            stylePanelButtons(keypadPanel, controlColor, foreground, borderColor);
+            keypadPanel.setBackground(bgPrimary);
+            stylePanelButtonsWithPalette(keypadPanel, btnColor, textColor, opColor, eqColor);
         }
         if (historyPanel != null) {
             historyPanel.setBackground(background);
-            historyPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(borderColor), "History"));
+            historyPanel.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createTitledBorder(BorderFactory.createLineBorder(borderColor), "History"),
+                    BorderFactory.createEmptyBorder(8, 8, 8, 8)));
+            if (historyPanel instanceof GlassPanel glassPanel) {
+                glassPanel.setFillColor(glassFill);
+                glassPanel.setBorderColor(glassBorder);
+            }
         }
         if (display != null) {
-            display.setBackground(darkMode ? new Color(34, 39, 46) : new Color(255, 255, 255));
+            display.setBackground(darkMode ? new Color(27, 34, 45) : new Color(255, 255, 255));
             display.setForeground(foreground);
             display.setCaretColor(foreground);
+            display.setBorder(BorderFactory.createCompoundBorder(
+                    new RoundedBorder(18, borderColor, 1),
+                    BorderFactory.createEmptyBorder(12, 14, 12, 14)));
         }
         if (themeToggleButton != null) {
             themeToggleButton.setText(darkMode ? "☀" : "🌙");
-            themeToggleButton.setBackground(controlColor);
-            themeToggleButton.setForeground(foreground);
-            themeToggleButton.setBorder(BorderFactory.createLineBorder(borderColor));
+            themeToggleButton.setBackground(btnColor);
+            themeToggleButton.setForeground(textColor);
+            themeToggleButton.setBorder(new RoundedBorder(16, borderColor, 1));
         }
         if (memoryLabel != null) {
             memoryLabel.setForeground(foreground);
         }
-        if (historyArea != null) {
-            historyArea.setBackground(darkMode ? new Color(34, 39, 46) : new Color(255, 255, 255));
-            historyArea.setForeground(foreground);
+        if (historyListView != null) {
+            historyListView.setBackground(new Color(24, 30, 44));
+            historyListView.setForeground(textColor);
+        }
+        if (historyStepsArea != null) {
+            historyStepsArea.setBackground(new Color(18, 22, 32));
+            historyStepsArea.setForeground(textColor);
+        }
+        if (formulaArea != null) {
+            formulaArea.setBackground(darkMode ? new Color(27, 34, 45) : new Color(255, 255, 255));
+            formulaArea.setForeground(foreground);
+        }
+        if (statusLabel != null) {
+            statusLabel.setForeground(foreground);
+        }
+        if (challengeLabel != null) {
+            challengeLabel.setForeground(foreground);
+        }
+        if (challengeStatusLabel != null) {
+            challengeStatusLabel.setForeground(foreground);
         }
         repaint();
+    }
+
+    private void stylePanelButtonsWithPalette(JPanel panel, Color btnColor, Color textColor, Color opColor, Color eqColor) {
+        for (int i = 0; i < panel.getComponentCount(); i++) {
+            Component component = panel.getComponent(i);
+            if (component instanceof JButton button) {
+                boolean operatorButton = isOperatorButton(button.getText());
+                if ("=".equals(button.getText())) {
+                    button.setBackground(eqColor);
+                } else if (operatorButton) {
+                    button.setBackground(opColor);
+                } else {
+                    button.setBackground(btnColor);
+                }
+                button.setForeground(textColor);
+                button.setBorder(new RoundedBorder(18, btnColor.darker(), 1));
+                button.setOpaque(true);
+            }
+        }
+    }
+
+    // Rounded button implementation
+    private static class RoundedButton extends JButton {
+        RoundedButton(String text) {
+            super(text);
+            setContentAreaFilled(false);
+            setFocusPainted(false);
+            setBorder(new RoundedBorder(18, new Color(0,0,0,40), 1));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            Color bg = getBackground();
+            if (bg == null) bg = new Color(42,49,66);
+            g2.setColor(bg);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 24, 24);
+            super.paintComponent(g2);
+            g2.dispose();
+        }
+
+        @Override
+        protected void paintBorder(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(getForeground().darker());
+            g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 24, 24);
+            g2.dispose();
+        }
     }
 
     private void stylePanelButtons(JPanel panel, Color controlColor, Color foreground, Color borderColor) {
         for (int i = 0; i < panel.getComponentCount(); i++) {
             Component component = panel.getComponent(i);
             if (component instanceof JButton button) {
-                button.setBackground(controlColor);
+                boolean operatorButton = isOperatorButton(button.getText());
+                button.setBackground(operatorButton ? controlColor.darker() : controlColor);
                 button.setForeground(foreground);
-                button.setBorder(BorderFactory.createLineBorder(borderColor));
+                button.setBorder(new RoundedBorder(16, borderColor, 1));
+                button.setOpaque(true);
             }
         }
+    }
+
+    private boolean isOperatorButton(String text) {
+        return "+-*/^%".contains(text) || "C".equals(text) || "←".equals(text) || "=".equals(text);
     }
 
     private void backspace() {
@@ -422,54 +922,407 @@ public class Calculator extends JFrame implements ActionListener {
             return;
         }
         try {
-            double result = evaluateExpression(expr);
-            if (Double.isNaN(result) || Double.isInfinite(result)) {
+            EvaluationResult evaluation = evaluateExpression(expr);
+            if (Double.isNaN(evaluation.value) || Double.isInfinite(evaluation.value)) {
                 throw new Exception("Invalid result");
             }
-            String resultText = formatNumber(result);
-            display.setText(resultText);
+            String resultText = formatNumber(evaluation.value);
+            display.setText(expression.toString());
+            resultField.setText(resultText);
             expression.setLength(0);
             expression.append(resultText);
-            lastResult = result;
+            lastExpression = expr;
+            lastResultText = resultText;
+            lastResult = evaluation.value;
             hasLastResult = true;
             startNewNumber = true;
-            appendHistory(expr + " = " + resultText);
-        } catch (Exception ex) {
-            display.setText("Error");
-            expression.setLength(0);
-            expression.append("0");
-            startNewNumber = true;
-            hasLastResult = false;
-        }
-    }
-
-    private double evaluateExpression(String expr) throws Exception {
-        return new ExpressionParser(expr, lastResult).parse();
-    }
-
-    private void appendHistory(String entry) {
-        historyEntries.add(0, entry);
-        if (historyEntries.size() > 20) {
-            historyEntries.remove(historyEntries.size() - 1);
-        }
-        if (historyArea != null) {
-            StringBuilder builder = new StringBuilder();
-            for (String item : historyEntries) {
-                if (builder.length() > 0) {
-                    builder.append("\n");
-                }
-                builder.append(item);
+            List<String> visibleSteps = new ArrayList<>(evaluation.steps);
+            visibleSteps.add("Final Answer = " + resultText);
+            if (stepsArea != null) {
+                stepsArea.setText(String.join("\n", visibleSteps));
             }
-            historyArea.setText(builder.toString());
-            historyArea.setCaretPosition(0);
+            appendHistory(expr + " = " + resultText, visibleSteps);
+            updateStatus("Calculated " + resultText);
+            if (currentChallenge != null && Math.abs(evaluation.value - currentChallenge.answer) < 1e-9) {
+                challengeAttempts++;
+                challengeScore++;
+                updateChallengeStatus("Correct! Score: " + challengeScore + "/" + challengeAttempts, true);
+                currentChallenge = null;
+            } else if (currentChallenge != null) {
+                challengeAttempts++;
+                updateChallengeStatus("Not quite. Score: " + challengeScore + "/" + challengeAttempts, false);
+                currentChallenge = null;
+            }
+        } catch (Exception ex) {
+            showSmartError(ex.getMessage());
         }
+    }
+
+    private EvaluationResult evaluateExpression(String expr) throws Exception {
+        return new ExpressionParser(expr, lastResult, Double.NaN, useDegrees).parse();
+    }
+
+    private EvaluationResult evaluateExpression(String expr, double xValue) throws Exception {
+        return new ExpressionParser(expr, lastResult, xValue, useDegrees).parse();
+    }
+
+    private void appendHistory(String entry, List<String> steps) {
+        HistoryEntry he = new HistoryEntry(entry, steps);
+        historyList.add(0, he);
+        if (historyList.size() > 20) {
+            historyList.remove(historyList.size() - 1);
+        }
+        refreshHistoryDisplay();
     }
 
     private void clearHistory() {
-        historyEntries.clear();
-        if (historyArea != null) {
-            historyArea.setText("");
+        historyList.clear();
+        if (historyListModel != null) {
+            historyListModel.clear();
         }
+        if (historyStepsArea != null) {
+            historyStepsArea.setText("");
+        }
+        updateStatus("History cleared");
+    }
+
+    private void refreshHistoryDisplay() {
+        if (historyListModel == null) return;
+        historyListModel.clear();
+        for (HistoryEntry he : historyList) {
+            historyListModel.addElement(he);
+        }
+        if (!historyList.isEmpty()) {
+            historyListView.setSelectedIndex(0);
+            historyListView.ensureIndexIsVisible(0);
+        } else if (historyStepsArea != null) {
+            historyStepsArea.setText("No history yet. Perform a calculation to store steps.");
+        }
+        updateHistoryDetail();
+        if (historyListView != null) {
+            historyListView.revalidate();
+            historyListView.repaint();
+        }
+    }
+
+    private void updateHistoryDetail() {
+        HistoryEntry he = historyListView.getSelectedValue();
+        if (he == null) {
+            if (historyStepsArea != null) {
+                historyStepsArea.setText("Select a history entry to view its calculation steps.");
+            }
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("Calculation:\n");
+        sb.append(he.header).append("\n\n");
+        sb.append("Steps:\n");
+        if (he.steps.isEmpty()) {
+            sb.append("No intermediate steps available.\n");
+        } else {
+            for (String step : he.steps) {
+                sb.append("• ").append(step).append("\n");
+            }
+        }
+        sb.append("\nFinal answer: ").append(he.header.substring(he.header.lastIndexOf(" = ") + 3));
+        if (historyStepsArea != null) {
+            historyStepsArea.setText(sb.toString());
+            historyStepsArea.setCaretPosition(0);
+        }
+    }
+
+    private void updateStatus(String message) {
+        if (statusLabel != null) {
+            statusLabel.setText(message);
+        }
+    }
+
+    private void showSmartError(String message) {
+        String friendly = "Unable to calculate";
+        if (message != null) {
+            if (message.contains("Division by zero") || message.contains("divide by zero")) {
+                friendly = "Cannot divide by zero.";
+            } else if (message.contains("Missing closing parenthesis") || message.contains("parenthesis")) {
+                friendly = "Check your brackets.";
+            } else if (message.contains("Unexpected character") || message.contains("Unknown identifier")) {
+                friendly = "Unsupported input.";
+            } else if (message.contains("Invalid result")) {
+                friendly = "The result is not valid.";
+            } else {
+                friendly = message;
+            }
+        }
+        display.setText(friendly);
+        expression.setLength(0);
+        expression.append("0");
+        startNewNumber = true;
+        hasLastResult = false;
+        updateStatus(friendly);
+    }
+
+    private void applyExplain() {
+        String expr = expression.toString();
+        if (expr != null && !expr.isBlank() && expr.equals(lastResultText) && !lastExpression.isBlank()) {
+            expr = lastExpression;
+        }
+        if (expr == null || expr.isBlank() || "0".equals(expr)) {
+            updateStatus("Nothing to explain");
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        if (expr.contains("%")) {
+            sb.append("Percent explanation:\n");
+            sb.append("15% of 200 => (15/100) × 200 = 30\n");
+        } else if (expr.matches(".*\\^.*")) {
+            sb.append("Power explanation:\n");
+            sb.append("a ^ b means a multiplied by itself b times.\n");
+        } else if (expr.matches(".*sqrt.*|.*√.*")) {
+            sb.append("Square root explanation:\n");
+            sb.append("sqrt(x) = a means a² = x.\n");
+        } else {
+            sb.append("Step-by-step:\n");
+            try {
+                EvaluationResult res = evaluateExpression(expr);
+                for (String s : res.steps) sb.append(s).append('\n');
+                sb.append("Final: ").append(formatNumber(res.value)).append('\n');
+            } catch (Exception ex) {
+                sb.append("Unable to explain: ").append(ex.getMessage()).append('\n');
+            }
+        }
+        JOptionPane.showMessageDialog(this, sb.toString(), "Explain", JOptionPane.INFORMATION_MESSAGE);
+        if (stepsArea != null) {
+            stepsArea.setText(sb.toString());
+        }
+    }
+
+    private void openGraph() {
+        String expr = expression.toString();
+        if (expr == null || expr.isBlank()) {
+            updateStatus("No expression to graph");
+            return;
+        }
+        JFrame gf = new JFrame("Graph - " + expr);
+        gf.setSize(700, 450);
+        gf.setLocationRelativeTo(this);
+        gf.add(new GraphPanel(expr, useDegrees));
+        gf.setVisible(true);
+    }
+
+    private static class GraphPanel extends JPanel {
+        private final String expr;
+        private final boolean useDegrees;
+        private List<Point> points;
+
+        GraphPanel(String expr, boolean useDegrees) {
+            this.expr = expr;
+            this.useDegrees = useDegrees;
+            this.points = new ArrayList<>();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getWidth();
+            int h = getHeight();
+            g2.setColor(new Color(24, 26, 40));
+            g2.fillRect(0, 0, w, h);
+            g2.setColor(new Color(120, 120, 140));
+            g2.drawLine(0, h / 2, w, h / 2);
+            g2.drawLine(w / 2, 0, w / 2, h);
+            g2.setColor(new Color(146, 120, 255));
+            double minX = -10;
+            double maxX = 10;
+            double scaleX = w / (maxX - minX);
+            double scaleY = h / 20.0;
+            points.clear();
+            for (int px = 0; px <= w; px++) {
+                double x = minX + (px / scaleX);
+                double y;
+                try {
+                    y = evaluateGraphExpression(expr, x);
+                } catch (Exception ex) {
+                    y = Double.NaN;
+                }
+                if (Double.isFinite(y)) {
+                    int py = h / 2 - (int) Math.round(y * scaleY);
+                    points.add(new Point(px, py));
+                }
+            }
+            for (int i = 1; i < points.size(); i++) {
+                Point a = points.get(i - 1);
+                Point b = points.get(i);
+                if (Math.abs(a.y - b.y) < h) {
+                    g2.drawLine(a.x, a.y, b.x, b.y);
+                }
+            }
+            g2.setColor(Color.WHITE);
+            g2.drawString("y = " + expr, 14, 18);
+            g2.dispose();
+        }
+
+        private double evaluateGraphExpression(String expr, double xVal) throws Exception {
+            return new ExpressionParser(expr, 0, xVal, useDegrees).parse().value;
+        }
+    }
+
+    private void applyFormula() {
+        String selection = String.valueOf(formulaSelect.getSelectedItem());
+        StringBuilder details = new StringBuilder();
+        try {
+            switch (selection) {
+                case "Circle" -> {
+                    double radius = readDouble("Circle radius");
+                    double area = Math.PI * radius * radius;
+                    details.append("Formula: A = πr²\n");
+                    details.append("Calculation: A = π × ").append(formatNumber(radius)).append("²\n");
+                    details.append("Result: ").append(formatNumber(area));
+                    expression.setLength(0);
+                    expression.append(formatNumber(area));
+                    display.setText(formatNumber(area));
+                    startNewNumber = true;
+                }
+                case "Triangle" -> {
+                    double base = readDouble("Base");
+                    double height = readDouble("Height");
+                    double area = 0.5 * base * height;
+                    details.append("Formula: A = ½bh\n");
+                    details.append("Calculation: A = 0.5 × ").append(formatNumber(base)).append(" × ").append(formatNumber(height)).append("\n");
+                    details.append("Result: ").append(formatNumber(area));
+                    expression.setLength(0);
+                    expression.append(formatNumber(area));
+                    display.setText(formatNumber(area));
+                    startNewNumber = true;
+                }
+                case "Rectangle" -> {
+                    double length = readDouble("Length");
+                    double width = readDouble("Width");
+                    double area = length * width;
+                    details.append("Formula: A = l × w\n");
+                    details.append("Calculation: A = ").append(formatNumber(length)).append(" × ").append(formatNumber(width)).append("\n");
+                    details.append("Result: ").append(formatNumber(area));
+                    expression.setLength(0);
+                    expression.append(formatNumber(area));
+                    display.setText(formatNumber(area));
+                    startNewNumber = true;
+                }
+                case "Pythagoras" -> {
+                    double a = readDouble("Side A");
+                    double b = readDouble("Side B");
+                    double c = Math.sqrt(a * a + b * b);
+                    details.append("Formula: c = √(a² + b²)\n");
+                    details.append("Calculation: c = √(").append(formatNumber(a)).append("² + ").append(formatNumber(b)).append("²)\n");
+                    details.append("Result: ").append(formatNumber(c));
+                    expression.setLength(0);
+                    expression.append(formatNumber(c));
+                    display.setText(formatNumber(c));
+                    startNewNumber = true;
+                }
+                case "Quadratic equation" -> {
+                    double a = readDouble("Coefficient a");
+                    double b = readDouble("Coefficient b");
+                    double c = readDouble("Coefficient c");
+                    double discriminant = b * b - 4 * a * c;
+                    if (discriminant < 0) {
+                        throw new Exception("Discriminant is negative");
+                    }
+                    double root1 = (-b + Math.sqrt(discriminant)) / (2 * a);
+                    double root2 = (-b - Math.sqrt(discriminant)) / (2 * a);
+                    details.append("Formula: x = (-b ± √(b² - 4ac)) / 2a\n");
+                    details.append("Roots: ").append(formatNumber(root1)).append(" and ").append(formatNumber(root2));
+                    expression.setLength(0);
+                    expression.append(formatNumber(root1));
+                    display.setText(formatNumber(root1));
+                    startNewNumber = true;
+                }
+                case "Simple Interest" -> {
+                    double principal = readDouble("Principal");
+                    double rate = readDouble("Rate (%)");
+                    double time = readDouble("Time (years)");
+                    double interest = principal * rate * time / 100.0;
+                    details.append("Formula: SI = P × R × T / 100\n");
+                    details.append("Result: ").append(formatNumber(interest));
+                    expression.setLength(0);
+                    expression.append(formatNumber(interest));
+                    display.setText(formatNumber(interest));
+                    startNewNumber = true;
+                }
+                case "Compound Interest" -> {
+                    double principal = readDouble("Principal");
+                    double rate = readDouble("Rate (%)");
+                    double time = readDouble("Time (years)");
+                    double frequency = readDouble("Compounds per year");
+                    double amount = principal * Math.pow(1 + rate / (100.0 * frequency), frequency * time);
+                    details.append("Formula: A = P(1 + r/n)^(nt)\n");
+                    details.append("Result: ").append(formatNumber(amount));
+                    expression.setLength(0);
+                    expression.append(formatNumber(amount));
+                    display.setText(formatNumber(amount));
+                    startNewNumber = true;
+                }
+                default -> updateStatus("Formula assistant is ready");
+            }
+            formulaArea.setText(details.toString());
+            updateStatus("Formula added to the calculator");
+        } catch (Exception ex) {
+            formulaArea.setText("Unable to compute with the selected formula.\n" + ex.getMessage());
+            updateStatus("Formula assistant error");
+        }
+    }
+
+    private double readDouble(String label) {
+        String input = JOptionPane.showInputDialog(this, label + ":", "Formula Assistant", JOptionPane.PLAIN_MESSAGE);
+        if (input == null || input.isBlank()) {
+            throw new IllegalArgumentException("No value entered");
+        }
+        return Double.parseDouble(input);
+    }
+
+    private void startChallenge() {
+        currentChallenge = generateChallenge();
+        expression.setLength(0);
+        expression.append(currentChallenge.expression);
+        display.setText("Q: " + currentChallenge.displayText);
+        startNewNumber = false;
+        updateChallengeStatus("Solve it and press =", true);
+        updateStatus("Challenge started");
+    }
+
+    private void updateChallengeStatus(String text, boolean positive) {
+        if (challengeLabel != null) {
+            challengeLabel.setText(text);
+            challengeLabel.setForeground(positive ? new Color(0, 128, 0) : new Color(180, 60, 60));
+        }
+        if (challengeStatusLabel != null) {
+            challengeStatusLabel.setText("Score: " + challengeScore + "/" + challengeAttempts);
+        }
+    }
+
+    private Challenge generateChallenge() {
+        int choice = random.nextInt(4);
+        return switch (choice) {
+            case 0 -> {
+                int value = random.nextInt(10) + 2;
+                int offset = random.nextInt(20) + 1;
+                yield new Challenge("sqrt(" + (value * value) + ") + " + offset, "√" + (value * value) + " + " + offset, (double) value + offset);
+            }
+            case 1 -> {
+                int value = random.nextInt(9) + 2;
+                int offset = random.nextInt(10) + 1;
+                yield new Challenge("" + value + "^2 + " + offset, value + "² + " + offset, Math.pow(value, 2) + offset);
+            }
+            case 2 -> {
+                int a = random.nextInt(8) + 2;
+                int b = random.nextInt(8) + 2;
+                yield new Challenge(a + " + " + b + " * 2", a + " + " + b + " × 2", a + b * 2.0);
+            }
+            default -> {
+                int a = random.nextInt(6) + 2;
+                int b = random.nextInt(6) + 2;
+                yield new Challenge("(" + a + " + " + b + ") * 3", "(" + a + " + " + b + ") × 3", (a + b) * 3.0);
+            }
+        };
     }
 
     private String getCurrentNumber() {
@@ -486,7 +1339,7 @@ public class Calculator extends JFrame implements ActionListener {
         return current.endsWith("+") || current.endsWith("-") || current.endsWith("*") || current.endsWith("/") || current.endsWith("^") || current.endsWith("%") || current.endsWith("(");
     }
 
-    private String formatNumber(double value) {
+    private static String formatNumber(double value) {
         if (Math.abs(value) < 1e-12) {
             value = 0.0;
         }
@@ -499,21 +1352,31 @@ public class Calculator extends JFrame implements ActionListener {
     private static class ExpressionParser {
         private final String expression;
         private final double lastResult;
+        private final double xValue;
+        private final boolean useDegrees;
         private int index = 0;
         private final List<Token> tokens;
+        private final List<String> steps = new ArrayList<>();
+        private int stepCounter = 0;
 
-        ExpressionParser(String expression, double lastResult) throws Exception {
+        ExpressionParser(String expression, double lastResult, double xValue, boolean useDegrees) throws Exception {
             this.expression = expression;
             this.lastResult = lastResult;
+            this.xValue = xValue;
+            this.useDegrees = useDegrees;
             this.tokens = tokenize(expression);
         }
 
-        double parse() throws Exception {
+        ExpressionParser(String expression, double lastResult, boolean useDegrees) throws Exception {
+            this(expression, lastResult, Double.NaN, useDegrees);
+        }
+
+        EvaluationResult parse() throws Exception {
             double value = parseAddition();
             if (peek().type != TokenType.EOF) {
                 throw new Exception("Unexpected token");
             }
-            return value;
+            return new EvaluationResult(value, steps);
         }
 
         private double parseAddition() throws Exception {
@@ -521,7 +1384,9 @@ public class Calculator extends JFrame implements ActionListener {
             while (match("+", "-")) {
                 String op = previous().value;
                 double right = parseMultiplication();
-                value = "+".equals(op) ? value + right : value - right;
+                double next = "+".equals(op) ? value + right : value - right;
+                recordStep(formatNumber(value), op, formatNumber(right), next);
+                value = next;
             }
             return value;
         }
@@ -531,16 +1396,20 @@ public class Calculator extends JFrame implements ActionListener {
             while (match("*", "/", "%")) {
                 String op = previous().value;
                 double right = parseUnary();
+                double left = value;
+                double result;
                 if ("*".equals(op)) {
-                    value *= right;
+                    result = left * right;
                 } else if ("/".equals(op)) {
                     if (right == 0.0) {
-                        throw new Exception("Division by zero");
+                        throw new Exception("Cannot divide by zero.");
                     }
-                    value /= right;
+                    result = left / right;
                 } else {
-                    value %= right;
+                    result = left % right;
                 }
+                recordStep(formatNumber(left), op, formatNumber(right), result);
+                value = result;
             }
             return value;
         }
@@ -556,12 +1425,35 @@ public class Calculator extends JFrame implements ActionListener {
         }
 
         private double parsePower() throws Exception {
-            double value = parsePrimary();
+            double value = parseFactorial();
             if (match("^")) {
                 double exponent = parsePower();
-                return Math.pow(value, exponent);
+                double result = Math.pow(value, exponent);
+                recordStep(formatNumber(value), "^", formatNumber(exponent), result);
+                return result;
             }
             return value;
+        }
+
+        private double parseFactorial() throws Exception {
+            double value = parsePrimary();
+            while (match("!")) {
+                if (value < 0 || value != (int) value) {
+                    throw new Exception("Factorial requires non-negative integer");
+                }
+                int n = (int) value;
+                double result = factorial(n);
+                recordFunctionStep(formatNumber(n) + "!", result);
+                value = result;
+            }
+            return value;
+        }
+
+        private double factorial(int n) {
+            if (n > 170) return Double.POSITIVE_INFINITY;
+            double res = 1;
+            for (int i = 2; i <= n; i++) res *= i;
+            return res;
         }
 
         private double parsePrimary() throws Exception {
@@ -581,32 +1473,69 @@ public class Calculator extends JFrame implements ActionListener {
                 if ("e".equals(name)) {
                     return Math.E;
                 }
-                if ("sin".equals(name) || "cos".equals(name) || "tan".equals(name) || "sqrt".equals(name) || "log".equals(name) || "ln".equals(name)) {
+                if ("x".equals(name)) {
+                    return xValue;
+                }
+                if ("sin".equals(name) || "cos".equals(name) || "tan".equals(name)
+                        || "asin".equals(name) || "acos".equals(name) || "atan".equals(name)
+                        || "sqrt".equals(name) || "√".equals(name) || "log".equals(name) || "ln".equals(name)) {
+                    int startIdx = steps.size();
                     double argument = parseFunctionArgument();
+                    // indent any newly added steps from argument parsing
+                    for (int i = startIdx; i < steps.size(); i++) {
+                        steps.set(i, "  " + steps.get(i));
+                    }
+                    steps.add(startIdx, "Evaluate argument for " + name + ":");
+                    double result;
                     switch (name) {
                         case "sin":
-                            return Math.sin(Math.toRadians(argument));
+                            result = Math.sin(useDegrees ? Math.toRadians(argument) : argument);
+                            break;
                         case "cos":
-                            return Math.cos(Math.toRadians(argument));
+                            result = Math.cos(useDegrees ? Math.toRadians(argument) : argument);
+                            break;
                         case "tan":
-                            return Math.tan(Math.toRadians(argument));
+                            result = Math.tan(useDegrees ? Math.toRadians(argument) : argument);
+                            break;
+                        case "asin":
+                            result = Math.asin(argument);
+                            if (useDegrees) result = Math.toDegrees(result);
+                            break;
+                        case "acos":
+                            result = Math.acos(argument);
+                            if (useDegrees) result = Math.toDegrees(result);
+                            break;
+                        case "atan":
+                            result = Math.atan(argument);
+                            if (useDegrees) result = Math.toDegrees(result);
+                            break;
                         case "sqrt":
-                            return Math.sqrt(argument);
+                            result = Math.sqrt(argument);
+                            break;
                         case "log":
-                            return Math.log10(argument);
+                            result = Math.log10(argument);
+                            break;
                         case "ln":
-                            return Math.log(argument);
+                            result = Math.log(argument);
+                            break;
                         default:
                             throw new Exception("Unsupported function");
                     }
+                    recordFunctionStep(name + "(" + formatNumber(argument) + ")", result);
+                    return result;
                 }
                 throw new Exception("Unknown identifier: " + name);
             }
             if (match("(")) {
+                int startIdx = steps.size();
                 double value = parseAddition();
                 if (!match(")")) {
                     throw new Exception("Missing closing parenthesis");
                 }
+                for (int i = startIdx; i < steps.size(); i++) {
+                    steps.set(i, "  " + steps.get(i));
+                }
+                steps.add(startIdx, "Evaluate parentheses:");
                 return value;
             }
             throw new Exception("Unexpected token");
@@ -623,6 +1552,18 @@ public class Calculator extends JFrame implements ActionListener {
             return parseUnary();
         }
 
+        private void recordStep(String left, String op, String right, double result) {
+            stepCounter++;
+            steps.add("Step " + stepCounter + ": " + left + " " + op + " " + right + " = " + formatNumber(result));
+        }
+
+        private void recordFunctionStep(String expression, double result) {
+            stepCounter++;
+            steps.add("Step " + stepCounter + ": " + expression + " = " + formatNumber(result));
+        }
+
+        
+
         private Token peek() {
             if (index < tokens.size()) {
                 return tokens.get(index);
@@ -635,7 +1576,9 @@ public class Calculator extends JFrame implements ActionListener {
         }
 
         private Token advance() {
-            return tokens.get(index++);
+            Token token = peek();
+            index++;
+            return token;
         }
 
         private boolean match(String... values) {
@@ -681,16 +1624,19 @@ public class Calculator extends JFrame implements ActionListener {
                     result.add(new Token(TokenType.NUMBER, numberText, Double.parseDouble(numberText)));
                     continue;
                 }
-                if (Character.isLetter(ch) || ch == 'π') {
+                if (Character.isLetter(ch) || ch == 'π' || ch == '√') {
                     int start = i;
-                    while (i < input.length() && (Character.isLetter(input.charAt(i)) || input.charAt(i) == 'π')) {
+                    while (i < input.length() && (Character.isLetter(input.charAt(i)) || input.charAt(i) == 'π' || input.charAt(i) == '√')) {
                         i++;
                     }
                     String ident = input.substring(start, i).toLowerCase(Locale.US);
+                    if ("√".equals(ident)) {
+                        ident = "sqrt";
+                    }
                     result.add(new Token(TokenType.IDENT, ident));
                     continue;
                 }
-                if ("+-*/^%()".indexOf(ch) >= 0) {
+                if ("+-*/^%()!".indexOf(ch) >= 0) {
                     result.add(new Token(TokenType.OPERATOR, String.valueOf(ch)));
                     i++;
                     continue;
@@ -723,6 +1669,144 @@ public class Calculator extends JFrame implements ActionListener {
         IDENT,
         OPERATOR,
         EOF
+    }
+
+    public static class EvaluationResult {
+        public final double value;
+        public final List<String> steps;
+
+        public EvaluationResult(double value, List<String> steps) {
+            this.value = value;
+            this.steps = steps;
+        }
+    }
+
+    // Public test entrypoint for parser evaluation
+    public static EvaluationResult evaluateForTest(String expr) {
+        try {
+            return new ExpressionParser(expr, 0, true).parse();
+        } catch (Exception e) {
+            List<String> err = new ArrayList<>();
+            err.add("Error: " + e.getMessage());
+            return new EvaluationResult(Double.NaN, err);
+        }
+    }
+
+    private static class Challenge {
+        private final String expression;
+        private final String displayText;
+        private final double answer;
+
+        private Challenge(String expression, String displayText, double answer) {
+            this.expression = expression;
+            this.displayText = displayText;
+            this.answer = answer;
+        }
+    }
+
+    private static class HistoryEntry {
+        private final String header;
+        private final List<String> steps;
+
+        HistoryEntry(String header, List<String> steps) {
+            this.header = header;
+            this.steps = steps == null ? new ArrayList<>() : new ArrayList<>(steps);
+        }
+    }
+
+    private static class GradientPanel extends JPanel {
+        private Color topColor = new Color(92, 128, 255);
+        private Color bottomColor = new Color(174, 132, 255);
+
+        GradientPanel() {
+            setOpaque(false);
+        }
+
+        void setGradientColors(Color topColor, Color bottomColor) {
+            this.topColor = topColor;
+            this.bottomColor = bottomColor;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            GradientPaint gradient = new GradientPaint(0, 0, topColor, 0, getHeight(), bottomColor);
+            g2.setPaint(gradient);
+            g2.fill(new RoundRectangle2D.Double(1, 1, getWidth() - 2, getHeight() - 2, 28, 28));
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    private static class GlassPanel extends JPanel {
+        private Color fillColor;
+        private Color borderColor;
+        private final int cornerRadius;
+
+        GlassPanel(Color fillColor, Color borderColor, int cornerRadius) {
+            this.fillColor = fillColor;
+            this.borderColor = borderColor;
+            this.cornerRadius = cornerRadius;
+            setOpaque(false);
+        }
+
+        void setFillColor(Color fillColor) {
+            this.fillColor = fillColor;
+            repaint();
+        }
+
+        void setBorderColor(Color borderColor) {
+            this.borderColor = borderColor;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setComposite(AlphaComposite.SrcOver);
+            g2.setColor(fillColor);
+            g2.fill(new RoundRectangle2D.Double(1, 1, getWidth() - 2, getHeight() - 2, cornerRadius, cornerRadius));
+            g2.setColor(borderColor);
+            g2.setStroke(new BasicStroke(1.2f));
+            g2.draw(new RoundRectangle2D.Double(1, 1, getWidth() - 2, getHeight() - 2, cornerRadius, cornerRadius));
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    private static class RoundedBorder implements Border {
+        private final int radius;
+        private final Color color;
+        private final int thickness;
+
+        RoundedBorder(int radius, Color color, int thickness) {
+            this.radius = radius;
+            this.color = color;
+            this.thickness = thickness;
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(thickness + 2, thickness + 2, thickness + 2, thickness + 2);
+        }
+
+        @Override
+        public boolean isBorderOpaque() {
+            return false;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            g2.setStroke(new BasicStroke(thickness));
+            g2.draw(new RoundRectangle2D.Double(x + 1, y + 1, width - 2, height - 2, radius, radius));
+            g2.dispose();
+        }
     }
 
     public static void main(String[] args) {
