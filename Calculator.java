@@ -263,7 +263,7 @@ public class Calculator extends JFrame implements ActionListener {
 
         historyStepsArea = new JTextArea();
         historyStepsArea.setEditable(false);
-        historyStepsArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        historyStepsArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         historyStepsArea.setLineWrap(true);
         historyStepsArea.setWrapStyleWord(true);
         historyStepsArea.setText("Select a history entry to view the calculated steps.");
@@ -283,7 +283,7 @@ public class Calculator extends JFrame implements ActionListener {
         formulaControls.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         formulaListModel = new DefaultListModel<>();
         formulaList = new JList<>(formulaListModel);
-        formulaList.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        formulaList.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         formulaList.setVisibleRowCount(8);
         formulaList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         formulaList.setFixedCellHeight(34);
@@ -298,14 +298,17 @@ public class Calculator extends JFrame implements ActionListener {
         formulaControls.add(formulaListScroll, BorderLayout.CENTER);
 
         JButton formulaActionButton = new JButton("Apply Formula");
-        formulaActionButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        formulaActionButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
         formulaActionButton.addActionListener(this);
         formulaActionButton.setFocusable(false);
-        formulaControls.add(formulaActionButton, BorderLayout.EAST);
+        JPanel formulaButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 2));
+        formulaButtonPanel.setOpaque(false);
+        formulaButtonPanel.add(formulaActionButton);
+        formulaControls.add(formulaButtonPanel, BorderLayout.SOUTH);
 
         formulaArea = new JTextArea();
         formulaArea.setEditable(false);
-        formulaArea.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        formulaArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         formulaArea.setLineWrap(true);
         formulaArea.setWrapStyleWord(true);
         JScrollPane formulaScroll = new JScrollPane(formulaArea);
@@ -313,7 +316,7 @@ public class Calculator extends JFrame implements ActionListener {
 
         stepsArea = new JTextArea();
         stepsArea.setEditable(false);
-        stepsArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        stepsArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         stepsArea.setLineWrap(true);
         stepsArea.setWrapStyleWord(true);
         stepsArea.setBackground(new Color(18, 22, 32));
