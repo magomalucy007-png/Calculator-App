@@ -363,8 +363,43 @@ public class Calculator extends JFrame implements ActionListener {
         applyHistoryButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
         applyHistoryButton.addActionListener(this);
         applyHistoryButton.setFocusable(false);
+
+        JButton selectFormulaButton = new JButton("Select...");
+        selectFormulaButton.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        selectFormulaButton.setFocusable(false);
+        selectFormulaButton.addActionListener(ev -> {
+            String[] choices = new String[] {"sin(x)", "cos(x)", "tan(x)", "sqrt(x)", "log(x)", "ln(x)", "x^2", "n!", "Quadratic equation", "Circle", "Rectangle"};
+            JList<String> chooser = new JList<>(choices);
+            chooser.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            JScrollPane sp = new JScrollPane(chooser);
+            sp.setPreferredSize(new Dimension(320, 220));
+            int res = JOptionPane.showConfirmDialog(this, sp, "Select a formula/template", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            if (res == JOptionPane.OK_OPTION && chooser.getSelectedValue() != null) {
+                String sel = chooser.getSelectedValue();
+                switch (sel) {
+                    case "Quadratic equation" -> {
+                        formulaList.setSelectedValue("Quadratic equation", true);
+                    }
+                    case "Circle" -> {
+                        formulaList.setSelectedValue("Circle", true);
+                    }
+                    case "Rectangle" -> {
+                        formulaList.setSelectedValue("Rectangle", true);
+                    }
+                    default -> {
+                        expression.setLength(0);
+                        expression.append(sel.replace("x", "Ans"));
+                        display.setText(expression.toString());
+                        formulaArea.setText("Template: " + sel + "\nUse the expression field to replace parameters (e.g., x).\nThen press Apply Formula to compute where applicable.");
+                    }
+                }
+                updateStatus("Selected: " + sel);
+            }
+        });
+
         JPanel bottomButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
         bottomButtons.setOpaque(false);
+        bottomButtons.add(selectFormulaButton);
         bottomButtons.add(applyHistoryButton);
         bottomButtons.add(clearHistoryButton);
         historyBottom.add(bottomButtons, BorderLayout.SOUTH);
