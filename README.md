@@ -4,7 +4,7 @@ QuantCalc is a Java Swing desktop scientific calculator built to solve everyday 
 
 ## What this app does
 
-QuantCalc evaluates expressions using an internal parser, offers historical calculation review, and provides a simple formula assistant for common topics such as geometry and finance.
+QuantCalc evaluates expressions using an internal parser, offers historical calculation review, and provides an interactive formula assistant that helps users solve geometry, algebra, finance, physics, and statistics problems directly from the desktop app.
 
 ## Key features
 
@@ -18,8 +18,10 @@ QuantCalc evaluates expressions using an internal parser, offers historical calc
 - `Ans` support for chaining results
 - Memory controls: `MC`, `MR`, `M+`, `M-`
 - Step-by-step explanation mode
-- Calculation history with detailed steps
-- Formula assistant for geometric and financial formulas
+- Solution History panel with saved calculation steps
+- Interactive formula panel with category-driven selections
+- Graphing with adjustable x-range and auto-scaled plotting
+- Welcome splash, expandable window, and polished branded header
 - Light/dark theme switch with desktop styling
 - Built-in parser; no external libraries required
 
@@ -27,11 +29,15 @@ QuantCalc evaluates expressions using an internal parser, offers historical calc
 
 This project now includes:
 
+- a larger branded `QuantCalc` header with tagline and app icon
+- an interactive formula list with category selection
+- solution history renamed and improved for calculation review
+- fullscreen/expand button support for desktop use
+- enhanced graphing experience with range controls
 - `Inv` mode for inverse trigonometric functions
 - `Deg` toggle for degrees/radians input handling
 - `!` factorial parsing and evaluation
-- Improved explain view that displays actual calculation steps
-- Updated history and step display for saved expressions
+- improved explain view that displays actual calculation steps
 
 ## Requirements
 
