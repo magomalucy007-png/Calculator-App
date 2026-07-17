@@ -360,7 +360,15 @@ public class Calculator extends JFrame implements ActionListener {
         historyBottom.setLayout(new BorderLayout(6, 6));
         historyBottom.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         historyBottom.add(assistantPanel, BorderLayout.CENTER);
-        historyBottom.add(clearHistoryButton, BorderLayout.SOUTH);
+        JButton applyHistoryButton = new JButton("Apply Formula");
+        applyHistoryButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        applyHistoryButton.addActionListener(this);
+        applyHistoryButton.setFocusable(false);
+        JPanel bottomButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
+        bottomButtons.setOpaque(false);
+        bottomButtons.add(applyHistoryButton);
+        bottomButtons.add(clearHistoryButton);
+        historyBottom.add(bottomButtons, BorderLayout.SOUTH);
 
         // rightTabs removed; use split history pane instead
         historyPanel.add(historySplit, BorderLayout.CENTER);
@@ -385,9 +393,14 @@ public class Calculator extends JFrame implements ActionListener {
         });
         leftPanel.add(new JScrollPane(catList), BorderLayout.CENTER);
         leftPanel.setPreferredSize(new Dimension(160,0));
+        // Use a resizable split pane so the history panel remains visible and user-adjustable
+        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, calculatorPanel, historyPanel);
+        centerSplit.setResizeWeight(0.68);
+        centerSplit.setContinuousLayout(true);
+        centerSplit.setOneTouchExpandable(true);
+        centerSplit.setBorder(null);
         workspacePanel.add(leftPanel, BorderLayout.WEST);
-
-        workspacePanel.add(historyPanel, BorderLayout.EAST);
+        workspacePanel.add(centerSplit, BorderLayout.CENTER);
 
         mainPanel.add(workspacePanel, BorderLayout.CENTER);
         rootPanel = new GradientPanel();
