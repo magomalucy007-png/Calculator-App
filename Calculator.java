@@ -222,15 +222,29 @@ public class Calculator extends JFrame implements ActionListener {
         historyListView.setSelectionBackground(new Color(120, 77, 255));
         historyListView.setSelectionForeground(Color.WHITE);
         historyListView.setToolTipText("Click an entry to view its steps.");
-        historyListView.setCellRenderer(new DefaultListCellRenderer() {
+        historyListView.setFixedCellHeight(64);
+        historyListView.setCellRenderer(new ListCellRenderer<HistoryEntry>() {
+            private final JLabel label = new JLabel();
+
             @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean selected, boolean hasFocus) {
-                super.getListCellRendererComponent(list, value, index, selected, hasFocus);
-                if (value instanceof HistoryEntry entry) {
-                    setText(entry.header);
+            public Component getListCellRendererComponent(JList<? extends HistoryEntry> list, HistoryEntry value, int index, boolean isSelected, boolean cellHasFocus) {
+                if (value == null) {
+                    label.setText("");
+                } else {
+                    String h = toHtmlPreview(value.header, list.getWidth() - 24);
+                    label.setText(h);
                 }
-                setOpaque(true);
-                return this;
+                label.setOpaque(true);
+                label.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+                label.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+                if (isSelected) {
+                    label.setBackground(new Color(120, 77, 255));
+                    label.setForeground(Color.WHITE);
+                } else {
+                    label.setBackground(list.getBackground());
+                    label.setForeground(list.getForeground());
+                }
+                return label;
             }
         });
         historyListView.addListSelectionListener(ev -> {
@@ -2027,6 +2041,14 @@ public class Calculator extends JFrame implements ActionListener {
             this.header = header;
             this.steps = steps == null ? new ArrayList<>() : new ArrayList<>(steps);
         }
+    }
+
+    private String toHtmlPreview(String text, int widthPx) {
+        if (text == null) return "";
+        String escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br/>");
+        // Limit width in CSS so JLabel wraps the text
+        int w = Math.max(180, Math.min(420, widthPx));
+        return "<html><div style='width:" + w + "px; font-family:Segoe UI; font-size:12px;'>" + escaped + "</div></html>";
     }
 
     private static class GradientPanel extends JPanel {
