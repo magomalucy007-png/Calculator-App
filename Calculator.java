@@ -213,8 +213,8 @@ public class Calculator extends JFrame implements ActionListener {
         javax.swing.border.TitledBorder histTb = BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(180, 195, 220)), "Solution History");
         histTb.setTitleJustification(javax.swing.border.TitledBorder.LEFT);
         histTb.setTitlePosition(javax.swing.border.TitledBorder.TOP);
-        histTb.setTitleFont(new Font("Segoe UI", Font.BOLD, 14));
-        historyPanel.setBorder(BorderFactory.createCompoundBorder(histTb, BorderFactory.createEmptyBorder(12, 12, 12, 12)));
+        histTb.setTitleFont(new Font("Segoe UI", Font.BOLD, 16));
+        historyPanel.setBorder(BorderFactory.createCompoundBorder(histTb, BorderFactory.createEmptyBorder(26, 12, 12, 12)));
         historyPanel.setPreferredSize(new Dimension(300, 0));
         historyListModel = new DefaultListModel<>();
         historyListView = new JList<>(historyListModel);
@@ -831,8 +831,9 @@ public class Calculator extends JFrame implements ActionListener {
             javax.swing.border.TitledBorder tb = BorderFactory.createTitledBorder(BorderFactory.createLineBorder(borderColor), "History");
             tb.setTitleJustification(javax.swing.border.TitledBorder.LEFT);
             tb.setTitlePosition(javax.swing.border.TitledBorder.TOP);
-            tb.setTitleFont(new Font("Segoe UI", Font.BOLD, 14));
-            historyPanel.setBorder(BorderFactory.createCompoundBorder(tb, BorderFactory.createEmptyBorder(12, 12, 12, 12)));
+            tb.setTitleFont(new Font("Segoe UI", Font.BOLD, 16));
+            tb.setTitleColor(foreground);
+            historyPanel.setBorder(BorderFactory.createCompoundBorder(tb, BorderFactory.createEmptyBorder(26, 12, 12, 12)));
             if (historyPanel instanceof GlassPanel glassPanel) {
                 glassPanel.setFillColor(glassFill);
                 glassPanel.setBorderColor(glassBorder);
