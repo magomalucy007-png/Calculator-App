@@ -36,7 +36,8 @@ public class Calculator extends JFrame implements ActionListener {
     private JLabel statusLabel;
     private JLabel challengeLabel;
     private JLabel challengeStatusLabel;
-    private JComboBox<String> formulaSelect;
+    private JList<String> formulaList;
+    private DefaultListModel<String> formulaListModel;
     private JButton challengeButton;
     private final List<HistoryEntry> historyList = new ArrayList<>();
     private GradientPanel rootPanel;
@@ -51,10 +52,12 @@ public class Calculator extends JFrame implements ActionListener {
 
     public Calculator() {
         super("QuantCalc");
+        setIconImage(Toolkit.getDefaultToolkit().getImage("quantcalc-icon.png"));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(980, 720);
         setLocationRelativeTo(null);
-        setResizable(false);
+        setExtendedState(JFrame.NORMAL);
+        setResizable(true);
         setLayout(new BorderLayout(10, 10));
 
         JPanel mainPanel = new GlassPanel(new Color(255, 255, 255, 140), new Color(255, 255, 255, 200), 30);
@@ -82,10 +85,29 @@ public class Calculator extends JFrame implements ActionListener {
 
         JPanel displayPanel = new JPanel(new BorderLayout(6, 6));
         displayPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        JPanel titlePanel = new JPanel(new BorderLayout(10, 4));
+        titlePanel.setOpaque(false);
+        JLabel iconLabel = new JLabel();
+        try {
+            ImageIcon icon = new ImageIcon("quantcalc-icon.png");
+            Image img = icon.getImage().getScaledInstance(32, 32, Image.SCALE_SMOOTH);
+            iconLabel.setIcon(new ImageIcon(img));
+        } catch (Exception ignored) {
+        }
+        JPanel titleTextPanel = new JPanel(new BorderLayout(2, 2));
+        titleTextPanel.setOpaque(false);
         JLabel titleLabel = new JLabel("QuantCalc");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 0));
-        displayPanel.add(titleLabel, BorderLayout.NORTH);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 30));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        titleLabel.setForeground(new Color(34, 37, 55));
+        JLabel tagLine = new JLabel("Smart Scientific Calculator & Learning Assistant");
+        tagLine.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        tagLine.setForeground(new Color(80, 84, 108));
+        titleTextPanel.add(titleLabel, BorderLayout.NORTH);
+        titleTextPanel.add(tagLine, BorderLayout.SOUTH);
+        titlePanel.add(iconLabel, BorderLayout.WEST);
+        titlePanel.add(titleTextPanel, BorderLayout.CENTER);
+        displayPanel.add(titlePanel, BorderLayout.NORTH);
         Box v = Box.createVerticalBox();
         JLabel exprLabel = new JLabel("Expression");
         exprLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -152,6 +174,12 @@ public class Calculator extends JFrame implements ActionListener {
         invToggleButton.setFocusable(false);
         controlPanel.add(invToggleButton);
 
+        JButton expandButton = new JButton("Expand");
+        expandButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        expandButton.addActionListener(this);
+        expandButton.setFocusable(false);
+        controlPanel.add(expandButton);
+
         memoryLabel = new JLabel("M: 0");
         memoryLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         controlPanel.add(memoryLabel);
@@ -183,7 +211,7 @@ public class Calculator extends JFrame implements ActionListener {
         historyPanel = new GlassPanel(new Color(255, 255, 255, 100), new Color(255, 255, 255, 200), 22);
         historyPanel.setLayout(new BorderLayout(6, 6));
         historyPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(180, 195, 220)), "History"),
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(180, 195, 220)), "Solution History"),
                 BorderFactory.createEmptyBorder(8, 8, 8, 8)));
         historyPanel.setPreferredSize(new Dimension(300, 0));
         historyListModel = new DefaultListModel<>();
@@ -238,9 +266,21 @@ public class Calculator extends JFrame implements ActionListener {
         JPanel formulaControls = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 16);
         formulaControls.setLayout(new BorderLayout(6, 6));
         formulaControls.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-        formulaSelect = new JComboBox<>(new String[]{"Circle", "Triangle", "Rectangle", "Pythagoras", "Quadratic equation", "Simple Interest", "Compound Interest"});
-        formulaSelect.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        formulaControls.add(formulaSelect, BorderLayout.CENTER);
+        formulaListModel = new DefaultListModel<>();
+        formulaList = new JList<>(formulaListModel);
+        formulaList.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        formulaList.setVisibleRowCount(5);
+        formulaList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        formulaList.setFixedCellHeight(28);
+        formulaList.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 220), 1, true));
+        formulaList.addListSelectionListener(ev -> {
+            if (!ev.getValueIsAdjusting() && formulaList.getSelectedValue() != null) {
+                showFormulaDetails(formulaList.getSelectedValue());
+            }
+        });
+        JScrollPane formulaListScroll = new JScrollPane(formulaList);
+        formulaListScroll.setPreferredSize(new Dimension(0, 120));
+        formulaControls.add(formulaListScroll, BorderLayout.CENTER);
 
         JButton formulaActionButton = new JButton("Apply Formula");
         formulaActionButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -347,25 +387,85 @@ public class Calculator extends JFrame implements ActionListener {
 
         bindKeyboardShortcuts();
         applyTheme();
+        showWelcomeMessage();
         setVisible(true);
     }
 
+    private void showWelcomeMessage() {
+        String welcomeText = "Welcome to QuantCalc!\n\n"
+                + "Your intelligent scientific calculator.\n\n"
+                + "✓ Scientific Functions\n\n"
+                + "✓ Formula Library\n\n"
+                + "✓ Step Solver\n\n"
+                + "✓ Graphing";
+        JOptionPane.showMessageDialog(this, welcomeText, "Welcome to QuantCalc!", JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private void showFormulasForCategory(String category) {
-        // Simple stub: populate formulaSelect and formulaArea with category examples
+        formulaListModel.clear();
         switch (category) {
             case "Geometry" -> {
-                formulaSelect.setSelectedItem("Circle");
-                formulaArea.setText("Circle area: A = πr²\nEnter radius when Apply Formula is pressed.");
+                formulaListModel.addElement("Circle");
+                formulaListModel.addElement("Rectangle");
+                formulaListModel.addElement("Triangle");
+                formulaListModel.addElement("Cylinder");
+                formulaListModel.addElement("Sphere");
             }
             case "Algebra" -> {
-                formulaSelect.setSelectedItem("Quadratic equation");
-                formulaArea.setText("Quadratic formula: x = (-b ± √(b² - 4ac))/2a\nUse Apply Formula to compute roots.");
+                formulaListModel.addElement("Quadratic equation");
+                formulaListModel.addElement("Pythagoras");
+                formulaListModel.addElement("Circle");
+                formulaListModel.addElement("Rectangle");
             }
             case "Finance" -> {
-                formulaSelect.setSelectedItem("Simple Interest");
-                formulaArea.setText("Simple Interest: SI = P × R × T / 100\nUse Apply Formula to compute.");
+                formulaListModel.addElement("Simple Interest");
+                formulaListModel.addElement("Compound Interest");
+                formulaListModel.addElement("Loan Payment");
             }
-            default -> formulaArea.setText(category + " formulas coming soon.");
+            case "Physics" -> {
+                formulaListModel.addElement("Force");
+                formulaListModel.addElement("Velocity");
+                formulaListModel.addElement("Energy");
+            }
+            case "Statistics" -> {
+                formulaListModel.addElement("Mean");
+                formulaListModel.addElement("Standard Deviation");
+                formulaListModel.addElement("Probability");
+            }
+            default -> {
+                formulaArea.setText(category + " formulas coming soon.");
+                return;
+            }
+        }
+        if (!formulaListModel.isEmpty()) {
+            formulaList.setSelectedIndex(0);
+            showFormulaDetails(formulaList.getSelectedValue());
+        }
+    }
+
+    private void showFormulaDetails(String formula) {
+        if (formula == null) {
+            formulaArea.setText("");
+            return;
+        }
+        switch (formula) {
+            case "Circle" -> formulaArea.setText("Circle area: A = πr²\nSelect Apply Formula to compute using radius.");
+            case "Rectangle" -> formulaArea.setText("Rectangle area: A = l × w\nSelect Apply Formula to compute using length and width.");
+            case "Triangle" -> formulaArea.setText("Triangle area: A = ½ × base × height\nSelect Apply Formula to compute using base and height.");
+            case "Cylinder" -> formulaArea.setText("Cylinder volume: V = πr²h\nSelect Apply Formula to compute using radius and height.");
+            case "Sphere" -> formulaArea.setText("Sphere volume: V = 4/3 πr³\nSelect Apply Formula to compute using radius.");
+            case "Pythagoras" -> formulaArea.setText("Pythagoras: c = √(a² + b²)\nSelect Apply Formula to compute the hypotenuse.");
+            case "Quadratic equation" -> formulaArea.setText("Quadratic formula: x = (-b ± √(b² - 4ac)) / 2a\nSelect Apply Formula to compute equation roots.");
+            case "Simple Interest" -> formulaArea.setText("Simple Interest: SI = P × R × T / 100\nSelect Apply Formula to compute interest.");
+            case "Compound Interest" -> formulaArea.setText("Compound Interest: A = P(1 + r/n)^(nt)\nSelect Apply Formula to compute amount.");
+            case "Loan Payment" -> formulaArea.setText("Loan Payment: Use standard amortization formula.\nThis option is available in later updates.");
+            case "Force" -> formulaArea.setText("Force: F = m × a\nSelect Apply Formula to compute force.");
+            case "Velocity" -> formulaArea.setText("Velocity: v = d / t\nSelect Apply Formula to compute velocity.");
+            case "Energy" -> formulaArea.setText("Energy: E = mc²\nSelect Apply Formula to compute energy.");
+            case "Mean" -> formulaArea.setText("Mean: sum(values) / count\nUse the expression interface or enter values manually in the calculator.");
+            case "Standard Deviation" -> formulaArea.setText("Standard Deviation: Use the calculator to compute variance and root of the average squared deviation.");
+            case "Probability" -> formulaArea.setText("Probability: p = favorable / total\nUse the expression interface to compute probabilities.");
+            default -> formulaArea.setText(formula + " is available for calculation.");
         }
     }
 
@@ -548,6 +648,15 @@ public class Calculator extends JFrame implements ActionListener {
                 invMode = !invMode;
                 if (invToggleButton != null) invToggleButton.setText(invMode ? "Inv*" : "Inv");
                 updateStatus(invMode ? "Inverse trig ON" : "Inverse trig OFF");
+                break;
+            case "Expand":
+                if ((getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH) {
+                    setExtendedState(JFrame.NORMAL);
+                    updateStatus("Window restored");
+                } else {
+                    setExtendedState(JFrame.MAXIMIZED_BOTH);
+                    updateStatus("Window expanded");
+                }
                 break;
             case "sin":
                 insertText(invMode ? "asin(" : "sin(");
@@ -1101,21 +1210,81 @@ public class Calculator extends JFrame implements ActionListener {
             updateStatus("No expression to graph");
             return;
         }
+        GraphSettings settings = promptGraphSettings(expr);
+        if (settings == null) {
+            updateStatus("Graph cancelled");
+            return;
+        }
         JFrame gf = new JFrame("Graph - " + expr);
-        gf.setSize(700, 450);
+        gf.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        gf.setSize(820, 520);
         gf.setLocationRelativeTo(this);
-        gf.add(new GraphPanel(expr, useDegrees));
+        gf.add(new GraphPanel(expr, useDegrees, settings.minX, settings.maxX, settings.samples));
         gf.setVisible(true);
     }
 
-    private static class GraphPanel extends JPanel {
+    private GraphSettings promptGraphSettings(String expr) {
+        JTextField minXField = new JTextField("-10");
+        JTextField maxXField = new JTextField("10");
+        JTextField samplesField = new JTextField("700");
+        JPanel panel = new JPanel(new java.awt.GridLayout(0, 2, 8, 8));
+        panel.add(new JLabel("X minimum:"));
+        panel.add(minXField);
+        panel.add(new JLabel("X maximum:"));
+        panel.add(maxXField);
+        panel.add(new JLabel("Plot points (100-2000):"));
+        panel.add(samplesField);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Graph settings for " + expr,
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) {
+            return null;
+        }
+        try {
+            double minX = Double.parseDouble(minXField.getText().trim());
+            double maxX = Double.parseDouble(maxXField.getText().trim());
+            int samples = Integer.parseInt(samplesField.getText().trim());
+            if (minX >= maxX) {
+                JOptionPane.showMessageDialog(this, "X minimum must be less than X maximum.", "Invalid range", JOptionPane.WARNING_MESSAGE);
+                return null;
+            }
+            if (samples < 100 || samples > 2000) {
+                JOptionPane.showMessageDialog(this, "Plot points should be between 100 and 2000.", "Invalid value", JOptionPane.WARNING_MESSAGE);
+                return null;
+            }
+            return new GraphSettings(minX, maxX, samples);
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Please enter valid numeric settings.", "Invalid input", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+    }
+
+    private static class GraphSettings {
+        final double minX;
+        final double maxX;
+        final int samples;
+
+        GraphSettings(double minX, double maxX, int samples) {
+            this.minX = minX;
+            this.maxX = maxX;
+            this.samples = samples;
+        }
+    }
+
+    private class GraphPanel extends JPanel {
         private final String expr;
         private final boolean useDegrees;
-        private List<Point> points;
+        private final double minX;
+        private final double maxX;
+        private final int samples;
+        private final List<Point> points;
 
-        GraphPanel(String expr, boolean useDegrees) {
+        GraphPanel(String expr, boolean useDegrees, double minX, double maxX, int samples) {
             this.expr = expr;
             this.useDegrees = useDegrees;
+            this.minX = minX;
+            this.maxX = maxX;
+            this.samples = samples;
             this.points = new ArrayList<>();
         }
 
@@ -1126,19 +1295,16 @@ public class Calculator extends JFrame implements ActionListener {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int w = getWidth();
             int h = getHeight();
+            int margin = 40;
             g2.setColor(new Color(24, 26, 40));
             g2.fillRect(0, 0, w, h);
-            g2.setColor(new Color(120, 120, 140));
-            g2.drawLine(0, h / 2, w, h / 2);
-            g2.drawLine(w / 2, 0, w / 2, h);
-            g2.setColor(new Color(146, 120, 255));
-            double minX = -10;
-            double maxX = 10;
-            double scaleX = w / (maxX - minX);
-            double scaleY = h / 20.0;
+
+            double minY = Double.POSITIVE_INFINITY;
+            double maxY = Double.NEGATIVE_INFINITY;
             points.clear();
-            for (int px = 0; px <= w; px++) {
-                double x = minX + (px / scaleX);
+            int plotWidth = w - margin * 2;
+            for (int i = 0; i <= samples; i++) {
+                double x = minX + (maxX - minX) * i / Math.max(1, samples);
                 double y;
                 try {
                     y = evaluateGraphExpression(expr, x);
@@ -1146,29 +1312,95 @@ public class Calculator extends JFrame implements ActionListener {
                     y = Double.NaN;
                 }
                 if (Double.isFinite(y)) {
-                    int py = h / 2 - (int) Math.round(y * scaleY);
-                    points.add(new Point(px, py));
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
                 }
+                int px = margin + (int) Math.round((x - minX) / (maxX - minX) * plotWidth);
+                points.add(new Point(px, Double.isFinite(y) ? (int) Math.round(y) : Integer.MIN_VALUE));
             }
-            for (int i = 1; i < points.size(); i++) {
-                Point a = points.get(i - 1);
-                Point b = points.get(i);
-                if (Math.abs(a.y - b.y) < h) {
-                    g2.drawLine(a.x, a.y, b.x, b.y);
+            if (minY == Double.POSITIVE_INFINITY || maxY == Double.NEGATIVE_INFINITY) {
+                g2.setColor(Color.RED);
+                g2.drawString("Unable to plot expression in the chosen range.", margin, h / 2);
+                g2.dispose();
+                return;
+            }
+            if (Math.abs(maxY - minY) < 1e-6) {
+                maxY = minY + 1;
+                minY = minY - 1;
+            }
+            double rangeY = maxY - minY;
+            double scaleX = plotWidth / (maxX - minX);
+            double scaleY = (h - margin * 2) / rangeY;
+            int xAxisY = margin + (int) Math.round((maxY) * scaleY);
+            int yAxisX = margin + (int) Math.round((-minX) / (maxX - minX) * plotWidth);
+
+            g2.setColor(new Color(80, 90, 110));
+            for (double xTick = Math.ceil(minX); xTick <= maxX; xTick++) {
+                int px = margin + (int) Math.round((xTick - minX) * scaleX);
+                g2.drawLine(px, margin, px, h - margin);
+            }
+            for (double yTick = Math.ceil(minY); yTick <= maxY; yTick++) {
+                int py = margin + (int) Math.round((maxY - yTick) * scaleY);
+                g2.drawLine(margin, py, w - margin, py);
+            }
+            g2.setColor(new Color(200, 200, 220));
+            g2.setStroke(new java.awt.BasicStroke(2f));
+            if (minY <= 0 && maxY >= 0) {
+                int zeroY = margin + (int) Math.round((maxY - 0) * scaleY);
+                g2.drawLine(margin, zeroY, w - margin, zeroY);
+            }
+            if (minX <= 0 && maxX >= 0) {
+                int zeroX = margin + (int) Math.round((0 - minX) * scaleX);
+                g2.drawLine(zeroX, margin, zeroX, h - margin);
+            }
+
+            g2.setColor(new Color(146, 120, 255));
+            g2.setStroke(new java.awt.BasicStroke(2f));
+            Point prev = null;
+            for (int i = 0; i < points.size(); i++) {
+                Point p = points.get(i);
+                if (p.y == Integer.MIN_VALUE) {
+                    prev = null;
+                    continue;
                 }
+                double x = minX + (maxX - minX) * i / Math.max(1, samples);
+                double y = (double) p.y;
+                int py = margin + (int) Math.round((maxY - y) * scaleY);
+                if (prev != null && Math.abs(prev.y - py) < h) {
+                    g2.drawLine(prev.x, prev.y, p.x, py);
+                }
+                prev = new Point(p.x, py);
             }
             g2.setColor(Color.WHITE);
-            g2.drawString("y = " + expr, 14, 18);
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            g2.drawString("y = " + expr, margin + 2, margin - 12);
+            g2.drawString("X range: [" + formatDouble(minX) + ", " + formatDouble(maxX) + "]", margin + 2, h - margin + 16);
+            g2.drawString("Y range: [" + formatDouble(minY) + ", " + formatDouble(maxY) + "]", margin + 220, h - margin + 16);
+            g2.drawString(useDegrees ? "Angle mode: Deg" : "Angle mode: Rad", margin + 430, h - margin + 16);
             g2.dispose();
         }
 
         private double evaluateGraphExpression(String expr, double xVal) throws Exception {
             return new ExpressionParser(expr, 0, xVal, useDegrees).parse().value;
         }
+
+        private String formatDouble(double value) {
+            if (Double.isNaN(value) || Double.isInfinite(value)) {
+                return "?";
+            }
+            if (Math.abs(value - Math.round(value)) < 1e-8) {
+                return String.valueOf((long) Math.round(value));
+            }
+            return String.format(Locale.US, "%.4f", value);
+        }
     }
 
     private void applyFormula() {
-        String selection = String.valueOf(formulaSelect.getSelectedItem());
+        String selection = formulaList == null ? "" : formulaList.getSelectedValue();
+        if (selection == null || selection.isBlank()) {
+            updateStatus("Select a formula first");
+            return;
+        }
         StringBuilder details = new StringBuilder();
         try {
             switch (selection) {
@@ -1259,6 +1491,83 @@ public class Calculator extends JFrame implements ActionListener {
                     expression.setLength(0);
                     expression.append(formatNumber(amount));
                     display.setText(formatNumber(amount));
+                    startNewNumber = true;
+                }
+                case "Cylinder" -> {
+                    double radius = readDouble("Radius");
+                    double height = readDouble("Height");
+                    double volume = Math.PI * radius * radius * height;
+                    details.append("Formula: V = πr²h\n");
+                    details.append("Result: ").append(formatNumber(volume));
+                    expression.setLength(0);
+                    expression.append(formatNumber(volume));
+                    display.setText(formatNumber(volume));
+                    startNewNumber = true;
+                }
+                case "Sphere" -> {
+                    double radius = readDouble("Radius");
+                    double volume = 4.0 / 3.0 * Math.PI * radius * radius * radius;
+                    details.append("Formula: V = 4/3 πr³\n");
+                    details.append("Result: ").append(formatNumber(volume));
+                    expression.setLength(0);
+                    expression.append(formatNumber(volume));
+                    display.setText(formatNumber(volume));
+                    startNewNumber = true;
+                }
+                case "Force" -> {
+                    double mass = readDouble("Mass");
+                    double acceleration = readDouble("Acceleration");
+                    double force = mass * acceleration;
+                    details.append("Formula: F = m × a\n");
+                    details.append("Result: ").append(formatNumber(force));
+                    expression.setLength(0);
+                    expression.append(formatNumber(force));
+                    display.setText(formatNumber(force));
+                    startNewNumber = true;
+                }
+                case "Velocity" -> {
+                    double distance = readDouble("Distance");
+                    double time = readDouble("Time");
+                    double velocity = distance / time;
+                    details.append("Formula: v = d / t\n");
+                    details.append("Result: ").append(formatNumber(velocity));
+                    expression.setLength(0);
+                    expression.append(formatNumber(velocity));
+                    display.setText(formatNumber(velocity));
+                    startNewNumber = true;
+                }
+                case "Energy" -> {
+                    double mass = readDouble("Mass");
+                    double c = 299792458;
+                    double energy = mass * c * c;
+                    details.append("Formula: E = mc²\n");
+                    details.append("Result: ").append(formatNumber(energy));
+                    expression.setLength(0);
+                    expression.append(formatNumber(energy));
+                    display.setText(formatNumber(energy));
+                    startNewNumber = true;
+                }
+                case "Mean" -> {
+                    details.append("Compute mean using the expression interface.\n");
+                    details.append("Enter values separated by + and then divide by the count.\n");
+                    expression.setLength(0);
+                    expression.append("0");
+                    display.setText("0");
+                    startNewNumber = true;
+                }
+                case "Standard Deviation" -> {
+                    details.append("Standard deviation is supported through calculation expressions.\n");
+                    details.append("Use the formula panel to select inputs and solve manually.");
+                    expression.setLength(0);
+                    expression.append("0");
+                    display.setText("0");
+                    startNewNumber = true;
+                }
+                case "Probability" -> {
+                    details.append("Probability formulas can be computed as p = favorable / total.\n");
+                    expression.setLength(0);
+                    expression.append("0");
+                    display.setText("0");
                     startNewNumber = true;
                 }
                 default -> updateStatus("Formula assistant is ready");
