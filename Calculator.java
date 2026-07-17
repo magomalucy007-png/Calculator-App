@@ -245,6 +245,7 @@ public class Calculator extends JFrame implements ActionListener {
             }
         });
         JScrollPane historyListScroll = new JScrollPane(historyListView);
+        historyPanel.setPreferredSize(new Dimension(420, 0));
 
         historyStepsArea = new JTextArea();
         historyStepsArea.setEditable(false);
@@ -256,7 +257,7 @@ public class Calculator extends JFrame implements ActionListener {
         historyStepsArea.setForeground(Color.WHITE);
         JScrollPane historyStepsScroll = new JScrollPane(historyStepsArea);
         JSplitPane historySplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, historyListScroll, historyStepsScroll);
-        historySplit.setResizeWeight(0.35);
+        historySplit.setResizeWeight(0.45);
         historySplit.setBorder(null);
 
         JPanel assistantPanel = new GlassPanel(new Color(255, 255, 255, 85), new Color(255, 255, 255, 180), 20);
@@ -269,9 +270,9 @@ public class Calculator extends JFrame implements ActionListener {
         formulaListModel = new DefaultListModel<>();
         formulaList = new JList<>(formulaListModel);
         formulaList.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        formulaList.setVisibleRowCount(5);
+        formulaList.setVisibleRowCount(8);
         formulaList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        formulaList.setFixedCellHeight(28);
+        formulaList.setFixedCellHeight(34);
         formulaList.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 220), 1, true));
         formulaList.addListSelectionListener(ev -> {
             if (!ev.getValueIsAdjusting() && formulaList.getSelectedValue() != null) {
@@ -279,7 +280,7 @@ public class Calculator extends JFrame implements ActionListener {
             }
         });
         JScrollPane formulaListScroll = new JScrollPane(formulaList);
-        formulaListScroll.setPreferredSize(new Dimension(0, 120));
+        formulaListScroll.setPreferredSize(new Dimension(0, 240));
         formulaControls.add(formulaListScroll, BorderLayout.CENTER);
 
         JButton formulaActionButton = new JButton("Apply Formula");
@@ -294,7 +295,7 @@ public class Calculator extends JFrame implements ActionListener {
         formulaArea.setLineWrap(true);
         formulaArea.setWrapStyleWord(true);
         JScrollPane formulaScroll = new JScrollPane(formulaArea);
-        formulaScroll.setPreferredSize(new Dimension(0, 110));
+        formulaScroll.setPreferredSize(new Dimension(0, 180));
 
         stepsArea = new JTextArea();
         stepsArea.setEditable(false);
@@ -304,7 +305,7 @@ public class Calculator extends JFrame implements ActionListener {
         stepsArea.setBackground(new Color(18, 22, 32));
         stepsArea.setForeground(Color.WHITE);
         JScrollPane stepsScroll = new JScrollPane(stepsArea);
-        stepsScroll.setPreferredSize(new Dimension(0, 180));
+        stepsScroll.setPreferredSize(new Dimension(0, 280));
 
         challengeLabel = new JLabel("Challenge: ready");
         challengeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -392,13 +393,18 @@ public class Calculator extends JFrame implements ActionListener {
     }
 
     private void showWelcomeMessage() {
-        String welcomeText = "Welcome to QuantCalc!\n\n"
-                + "Your intelligent scientific calculator.\n\n"
-                + "✓ Scientific Functions\n\n"
-                + "✓ Formula Library\n\n"
-                + "✓ Step Solver\n\n"
-                + "✓ Graphing";
-        JOptionPane.showMessageDialog(this, welcomeText, "Welcome to QuantCalc!", JOptionPane.INFORMATION_MESSAGE);
+        String html = "<html><div style='font-family:Segoe UI, Arial; text-align:left;'>"
+                + "<h1 style='font-size:22pt; margin:6px 0 6px 0;'>Welcome to QuantCalc!</h1>"
+                + "<p style='font-size:12pt; margin:6px 0;'>Your intelligent scientific calculator.</p>"
+                + "<ul style='font-size:11pt; margin:6px 0 0 18px;'>"
+                + "<li>Scientific Functions</li>"
+                + "<li>Formula Library</li>"
+                + "<li>Step Solver</li>"
+                + "<li>Graphing</li>"
+                + "</ul>"
+                + "</div></html>";
+        JLabel label = new JLabel(html);
+        JOptionPane.showMessageDialog(this, label, "Welcome to QuantCalc!", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void showFormulasForCategory(String category) {
