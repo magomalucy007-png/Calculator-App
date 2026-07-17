@@ -210,11 +210,8 @@ public class Calculator extends JFrame implements ActionListener {
 
         historyPanel = new GlassPanel(new Color(255, 255, 255, 100), new Color(255, 255, 255, 200), 22);
         historyPanel.setLayout(new BorderLayout(6, 6));
-        javax.swing.border.TitledBorder histTb = BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(180, 195, 220)), "Solution History");
-        histTb.setTitleJustification(javax.swing.border.TitledBorder.LEFT);
-        histTb.setTitlePosition(javax.swing.border.TitledBorder.TOP);
-        histTb.setTitleFont(new Font("Segoe UI", Font.BOLD, 16));
-        historyPanel.setBorder(BorderFactory.createCompoundBorder(histTb, BorderFactory.createEmptyBorder(26, 12, 12, 12)));
+        // Use a simple line border + padding; the title will be shown as a separate label above the panel
+        historyPanel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(180, 195, 220)), BorderFactory.createEmptyBorder(12, 12, 12, 12)));
         historyPanel.setPreferredSize(new Dimension(300, 0));
         historyListModel = new DefaultListModel<>();
         historyListView = new JList<>(historyListModel);
@@ -397,8 +394,18 @@ public class Calculator extends JFrame implements ActionListener {
         // default to Algebra so users see algebra formulas on open
         catList.setSelectedIndex(1);
         leftPanel.setPreferredSize(new Dimension(160,0));
+        // Wrap the history panel with a header label so the title is always visible
+        JPanel historyWrapper = new JPanel(new BorderLayout());
+        historyWrapper.setOpaque(false);
+        JLabel historyTitleLabel = new JLabel("Solution History");
+        historyTitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        historyTitleLabel.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+        historyTitleLabel.setForeground(new Color(34, 37, 55));
+        historyWrapper.add(historyTitleLabel, BorderLayout.NORTH);
+        historyWrapper.add(historyPanel, BorderLayout.CENTER);
+
         // Use a resizable split pane so the history panel remains visible and user-adjustable
-        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, calculatorPanel, historyPanel);
+        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, calculatorPanel, historyWrapper);
         centerSplit.setResizeWeight(0.68);
         centerSplit.setContinuousLayout(true);
         centerSplit.setOneTouchExpandable(true);
@@ -828,12 +835,8 @@ public class Calculator extends JFrame implements ActionListener {
         }
         if (historyPanel != null) {
             historyPanel.setBackground(background);
-            javax.swing.border.TitledBorder tb = BorderFactory.createTitledBorder(BorderFactory.createLineBorder(borderColor), "History");
-            tb.setTitleJustification(javax.swing.border.TitledBorder.LEFT);
-            tb.setTitlePosition(javax.swing.border.TitledBorder.TOP);
-            tb.setTitleFont(new Font("Segoe UI", Font.BOLD, 16));
-            tb.setTitleColor(foreground);
-            historyPanel.setBorder(BorderFactory.createCompoundBorder(tb, BorderFactory.createEmptyBorder(26, 12, 12, 12)));
+            // keep a simple line border + padding; title is rendered separately above
+            historyPanel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(borderColor), BorderFactory.createEmptyBorder(12, 12, 12, 12)));
             if (historyPanel instanceof GlassPanel glassPanel) {
                 glassPanel.setFillColor(glassFill);
                 glassPanel.setBorderColor(glassBorder);
