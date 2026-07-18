@@ -44,6 +44,7 @@ public class Calculator extends JFrame implements ActionListener {
     private JLabel challengeStatusLabel;
     private JList<String> formulaList;
     private DefaultListModel<String> formulaListModel;
+    private JComboBox<String> formulaFieldsCombo;
     private JButton challengeButton;
     private final List<HistoryEntry> historyList = new ArrayList<>();
     private final File historyFile = resolveHistoryFile();
@@ -270,153 +271,75 @@ public class Calculator extends JFrame implements ActionListener {
         JScrollPane historyListScroll = new JScrollPane(historyListView);
         historyPanel.setPreferredSize(new Dimension(420, 0));
 
-        historyStepsArea = new JTextArea();
-        historyStepsArea.setEditable(false);
-        historyStepsArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        historyStepsArea.setLineWrap(true);
-        historyStepsArea.setWrapStyleWord(true);
-        historyStepsArea.setText("Select a history entry to view the calculated steps.");
-        historyStepsArea.setBackground(new Color(18, 22, 32));
-        historyStepsArea.setForeground(Color.WHITE);
-        JScrollPane historyStepsScroll = new JScrollPane(historyStepsArea);
-        JSplitPane historySplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, historyListScroll, historyStepsScroll);
-        historySplit.setResizeWeight(0.45);
-        historySplit.setBorder(null);
-
-        JPanel assistantPanel = new GlassPanel(new Color(255, 255, 255, 85), new Color(255, 255, 255, 180), 20);
-        assistantPanel.setLayout(new BorderLayout(6, 6));
-        assistantPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-
-        JPanel formulaControls = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 16);
-        formulaControls.setLayout(new BorderLayout(6, 6));
-        formulaControls.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-        formulaListModel = new DefaultListModel<>();
-        formulaList = new JList<>(formulaListModel);
-        formulaList.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        formulaList.setVisibleRowCount(8);
-        formulaList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        formulaList.setFixedCellHeight(34);
-        formulaList.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 220), 1, true));
-        formulaList.addListSelectionListener(ev -> {
-            if (!ev.getValueIsAdjusting() && formulaList.getSelectedValue() != null) {
-                showFormulaDetails(formulaList.getSelectedValue());
-            }
-        });
-        JScrollPane formulaListScroll = new JScrollPane(formulaList);
-        formulaListScroll.setPreferredSize(new Dimension(0, 240));
-        formulaControls.add(formulaListScroll, BorderLayout.CENTER);
-
-        JButton formulaActionButton = new JButton("Apply Formula");
-        formulaActionButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        formulaActionButton.addActionListener(this);
-        formulaActionButton.setFocusable(false);
-        JPanel formulaButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 2));
-        formulaButtonPanel.setOpaque(false);
-        formulaButtonPanel.add(formulaActionButton);
-        formulaControls.add(formulaButtonPanel, BorderLayout.SOUTH);
+        // Combobox panel for formula field selection
+        JPanel fieldSelectorPanel = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 16);
+        fieldSelectorPanel.setLayout(new BorderLayout(6, 6));
+        fieldSelectorPanel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        fieldSelectorPanel.setPreferredSize(new Dimension(420, 50));
+        
+        formulaFieldsCombo = new JComboBox<>();
+        formulaFieldsCombo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        formulaFieldsCombo.addActionListener(ev -> updateFormulaFieldsDisplay());
+        
+        JButton applyFormulaButton = new JButton("Apply Formula");
+        applyFormulaButton.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        applyFormulaButton.addActionListener(this);
+        applyFormulaButton.setFocusable(false);
+        
+        JPanel fieldComboPanel = new JPanel(new BorderLayout(6, 0));
+        fieldComboPanel.setOpaque(false);
+        fieldComboPanel.add(formulaFieldsCombo, BorderLayout.CENTER);
+        fieldComboPanel.add(applyFormulaButton, BorderLayout.EAST);
+        
+        fieldSelectorPanel.add(fieldComboPanel, BorderLayout.CENTER);
 
         formulaArea = new JTextArea();
         formulaArea.setEditable(false);
-        formulaArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        formulaArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         formulaArea.setLineWrap(true);
         formulaArea.setWrapStyleWord(true);
+        formulaArea.setBackground(new Color(240, 245, 250));
+        formulaArea.setForeground(new Color(34, 37, 55));
+        formulaArea.setText("Select a formula category to view available fields.");
         JScrollPane formulaScroll = new JScrollPane(formulaArea);
-        formulaScroll.setPreferredSize(new Dimension(0, 180));
+        formulaScroll.setPreferredSize(new Dimension(0, 140));
 
-        stepsArea = new JTextArea();
-        stepsArea.setEditable(false);
-        stepsArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        stepsArea.setLineWrap(true);
-        stepsArea.setWrapStyleWord(true);
-        stepsArea.setBackground(new Color(18, 22, 32));
-        stepsArea.setForeground(Color.WHITE);
-        JScrollPane stepsScroll = new JScrollPane(stepsArea);
-        stepsScroll.setPreferredSize(new Dimension(0, 280));
+        // Challenge panel
+        JPanel challengePanel = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 16);
+        challengePanel.setLayout(new BorderLayout(6, 6));
+        challengePanel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        challengePanel.setPreferredSize(new Dimension(420, 120));
 
+        Box challengeBox = Box.createVerticalBox();
         challengeLabel = new JLabel("Challenge: ready");
-        challengeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        challengeLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        challengeLabel.setForeground(new Color(34, 37, 55));
+        
         challengeStatusLabel = new JLabel("Score: 0/0");
         challengeStatusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-
+        
         statusLabel = new JLabel("Ready to calculate");
         statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        
+        challengeBox.add(challengeLabel);
+        challengeBox.add(Box.createVerticalStrut(4));
+        challengeBox.add(challengeStatusLabel);
+        challengeBox.add(Box.createVerticalStrut(4));
+        challengeBox.add(statusLabel);
+        
+        challengePanel.add(challengeBox, BorderLayout.WEST);
 
-        Box infoBox = Box.createVerticalBox();
-        infoBox.add(challengeLabel);
-        infoBox.add(challengeStatusLabel);
-        infoBox.add(Box.createVerticalStrut(4));
-        infoBox.add(statusLabel);
-
-        assistantPanel.add(formulaControls, BorderLayout.NORTH);
-        assistantPanel.add(formulaScroll, BorderLayout.CENTER);
-        JCheckBox showStepsCheck = new JCheckBox("Show Steps", true);
-        showStepsCheck.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        showStepsCheck.addActionListener(ev -> {
-            showSteps = showStepsCheck.isSelected();
-            refreshHistoryDisplay();
-        });
-        Box southBox = Box.createVerticalBox();
-        southBox.add(infoBox);
-        southBox.add(Box.createVerticalStrut(6));
-        southBox.add(showStepsCheck);
-        assistantPanel.add(southBox, BorderLayout.SOUTH);
-
-        JButton clearHistoryButton = new JButton("Clear History");
-        clearHistoryButton.addActionListener(this);
-        clearHistoryButton.setFocusable(false);
-
-        JPanel historyBottom = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 16);
-        historyBottom.setLayout(new BorderLayout(6, 6));
-        historyBottom.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-        historyBottom.add(assistantPanel, BorderLayout.CENTER);
-        JButton applyHistoryButton = new JButton("Apply Formula");
-        applyHistoryButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        applyHistoryButton.addActionListener(this);
-        applyHistoryButton.setFocusable(false);
-
-        JButton selectFormulaButton = new JButton("Select...");
-        selectFormulaButton.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        selectFormulaButton.setFocusable(false);
-        selectFormulaButton.addActionListener(ev -> {
-            String[] choices = new String[] {"sin(x)", "cos(x)", "tan(x)", "sqrt(x)", "log(x)", "ln(x)", "x^2", "n!", "Quadratic equation", "Circle", "Rectangle"};
-            JList<String> chooser = new JList<>(choices);
-            chooser.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-            JScrollPane sp = new JScrollPane(chooser);
-            sp.setPreferredSize(new Dimension(320, 220));
-            int res = JOptionPane.showConfirmDialog(this, sp, "Select a formula/template", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-            if (res == JOptionPane.OK_OPTION && chooser.getSelectedValue() != null) {
-                String sel = chooser.getSelectedValue();
-                switch (sel) {
-                    case "Quadratic equation" -> {
-                        formulaList.setSelectedValue("Quadratic equation", true);
-                    }
-                    case "Circle" -> {
-                        formulaList.setSelectedValue("Circle", true);
-                    }
-                    case "Rectangle" -> {
-                        formulaList.setSelectedValue("Rectangle", true);
-                    }
-                    default -> {
-                        expression.setLength(0);
-                        expression.append(sel.replace("x", "Ans"));
-                        display.setText(expression.toString());
-                        formulaArea.setText("Template: " + sel + "\nUse the expression field to replace parameters (e.g., x).\nThen press Apply Formula to compute where applicable.");
-                    }
-                }
-                updateStatus("Selected: " + sel);
-            }
-        });
-
-        JPanel bottomButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
-        bottomButtons.setOpaque(false);
-        bottomButtons.add(selectFormulaButton);
-        bottomButtons.add(applyHistoryButton);
-        bottomButtons.add(clearHistoryButton);
-        historyBottom.add(bottomButtons, BorderLayout.SOUTH);
-
-        // rightTabs removed; use split history pane instead
-        historyPanel.add(historySplit, BorderLayout.CENTER);
-        historyPanel.add(historyBottom, BorderLayout.SOUTH);
+        // Assemble history panel with new layout
+        historyPanel.add(historyListScroll, BorderLayout.NORTH);
+        historyPanel.add(fieldSelectorPanel, BorderLayout.CENTER);
+        
+        // Create a south panel with formula area and challenge panel
+        JPanel southPanel = new JPanel(new BorderLayout(6, 6));
+        southPanel.setOpaque(false);
+        southPanel.add(formulaScroll, BorderLayout.NORTH);
+        southPanel.add(challengePanel, BorderLayout.CENTER);
+        
+        historyPanel.add(southPanel, BorderLayout.SOUTH);
         // Left: formula library
         JPanel leftPanel = new GlassPanel(new Color(255,255,255,80), new Color(255,255,255,180), 20);
         leftPanel.setLayout(new BorderLayout(6,6));
@@ -495,44 +418,56 @@ public class Calculator extends JFrame implements ActionListener {
     }
 
     private void showFormulasForCategory(String category) {
-        formulaListModel.clear();
+        DefaultComboBoxModel<String> comboModel = new DefaultComboBoxModel<>();
+        
         switch (category) {
             case "Geometry" -> {
-                formulaListModel.addElement("Circle");
-                formulaListModel.addElement("Rectangle");
-                formulaListModel.addElement("Triangle");
-                formulaListModel.addElement("Cylinder");
-                formulaListModel.addElement("Sphere");
+                comboModel.addElement("Circle");
+                comboModel.addElement("Rectangle");
+                comboModel.addElement("Triangle");
+                comboModel.addElement("Cylinder");
+                comboModel.addElement("Sphere");
             }
             case "Algebra" -> {
-                formulaListModel.addElement("Quadratic equation");
-                formulaListModel.addElement("Pythagoras");
-                formulaListModel.addElement("Circle");
-                formulaListModel.addElement("Rectangle");
+                comboModel.addElement("Quadratic equation");
+                comboModel.addElement("Pythagoras");
+                comboModel.addElement("Circle");
+                comboModel.addElement("Rectangle");
             }
             case "Finance" -> {
-                formulaListModel.addElement("Simple Interest");
-                formulaListModel.addElement("Compound Interest");
-                formulaListModel.addElement("Loan Payment");
+                comboModel.addElement("Simple Interest");
+                comboModel.addElement("Compound Interest");
+                comboModel.addElement("Loan Payment");
             }
             case "Physics" -> {
-                formulaListModel.addElement("Force");
-                formulaListModel.addElement("Velocity");
-                formulaListModel.addElement("Energy");
+                comboModel.addElement("Force");
+                comboModel.addElement("Velocity");
+                comboModel.addElement("Energy");
             }
             case "Statistics" -> {
-                formulaListModel.addElement("Mean");
-                formulaListModel.addElement("Standard Deviation");
-                formulaListModel.addElement("Probability");
+                comboModel.addElement("Mean");
+                comboModel.addElement("Standard Deviation");
+                comboModel.addElement("Probability");
             }
             default -> {
                 formulaArea.setText(category + " formulas coming soon.");
+                formulaFieldsCombo.setModel(new DefaultComboBoxModel<>());
                 return;
             }
         }
-        if (!formulaListModel.isEmpty()) {
-            formulaList.setSelectedIndex(0);
-            showFormulaDetails(formulaList.getSelectedValue());
+        
+        formulaFieldsCombo.setModel(comboModel);
+        
+        if (comboModel.getSize() > 0) {
+            formulaFieldsCombo.setSelectedIndex(0);
+            updateFormulaFieldsDisplay();
+        }
+    }
+    
+    private void updateFormulaFieldsDisplay() {
+        if (formulaFieldsCombo.getSelectedItem() != null) {
+            String selected = (String) formulaFieldsCombo.getSelectedItem();
+            showFormulaDetails(selected);
         }
     }
 
@@ -1178,7 +1113,10 @@ public class Calculator extends JFrame implements ActionListener {
     }
 
     private static File resolveHistoryFile() {
-        File desktopFile = new File(System.getProperty("user.home"), "OneDrive\\Desktop\\calculator_history.txt");
+        File userHome = new File(System.getProperty("user.home"));
+        File oneDrive = new File(userHome, "OneDrive");
+        File desktop = new File(oneDrive, "Desktop");
+        File desktopFile = new File(desktop, "calculator_history.txt");
         if (desktopFile.exists()) {
             return desktopFile;
         }
@@ -1544,7 +1482,7 @@ public class Calculator extends JFrame implements ActionListener {
     }
 
     private void applyFormula() {
-        String selection = formulaList == null ? "" : formulaList.getSelectedValue();
+        String selection = formulaFieldsCombo == null || formulaFieldsCombo.getSelectedItem() == null ? "" : (String) formulaFieldsCombo.getSelectedItem();
         if (selection == null || selection.isBlank()) {
             updateStatus("Select a formula first");
             return;
