@@ -1,6 +1,12 @@
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -40,6 +46,7 @@ public class Calculator extends JFrame implements ActionListener {
     private DefaultListModel<String> formulaListModel;
     private JButton challengeButton;
     private final List<HistoryEntry> historyList = new ArrayList<>();
+    private final File historyFile = new File("calculator_history.txt");
     private GradientPanel rootPanel;
     private int challengeScore = 0;
     private int challengeAttempts = 0;
@@ -464,6 +471,7 @@ public class Calculator extends JFrame implements ActionListener {
 
         bindKeyboardShortcuts();
         applyTheme();
+        loadHistoryFromFile();
         showWelcomeMessage();
         setVisible(true);
     }
@@ -1163,6 +1171,52 @@ public class Calculator extends JFrame implements ActionListener {
             historyList.remove(historyList.size() - 1);
         }
         refreshHistoryDisplay();
+        saveHistoryToFile();
+    }
+
+    private void loadHistoryFromFile() {
+        historyList.clear();
+        if (!historyFile.exists()) {
+            refreshHistoryDisplay();
+            return;
+        }
+        try (BufferedReader reader = new BufferedReader(new FileReader(historyFile))) {
+            String line;
+            String currentHeader = null;
+            List<String> currentSteps = new ArrayList<>();
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("ENTRY|")) {
+                    if (currentHeader != null) {
+                        historyList.add(new HistoryEntry(currentHeader, currentSteps));
+                    }
+                    currentHeader = line.substring(6);
+                    currentSteps = new ArrayList<>();
+                } else if (line.startsWith("STEP|")) {
+                    currentSteps.add(line.substring(5));
+                }
+            }
+            if (currentHeader != null) {
+                historyList.add(new HistoryEntry(currentHeader, currentSteps));
+            }
+        } catch (IOException ex) {
+            updateStatus("Unable to load saved history");
+        }
+        refreshHistoryDisplay();
+    }
+
+    private void saveHistoryToFile() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(historyFile))) {
+            for (HistoryEntry entry : historyList) {
+                writer.write("ENTRY|" + entry.header);
+                writer.newLine();
+                for (String step : entry.steps) {
+                    writer.write("STEP|" + step);
+                    writer.newLine();
+                }
+            }
+        } catch (IOException ex) {
+            updateStatus("Unable to save history");
+        }
     }
 
     private void clearHistory() {
@@ -1173,6 +1227,7 @@ public class Calculator extends JFrame implements ActionListener {
         if (historyStepsArea != null) {
             historyStepsArea.setText("");
         }
+        saveHistoryToFile();
         updateStatus("History cleared");
     }
 
