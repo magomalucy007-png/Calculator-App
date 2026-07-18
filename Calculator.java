@@ -368,7 +368,19 @@ public class Calculator extends JFrame implements ActionListener {
         JScrollPane contentScroll = new JScrollPane(contentPanel);
         contentScroll.setBorder(null);
         historyPanel.add(contentScroll, BorderLayout.CENTER);
-        // Left: formula library
+        
+        // Clear History button at the bottom
+        JButton clearHistoryButton = new JButton("Clear History");
+        clearHistoryButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        clearHistoryButton.setPreferredSize(new Dimension(140, 35));
+        clearHistoryButton.setFocusable(false);
+        clearHistoryButton.addActionListener(ev -> clearHistory());
+        
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        bottomPanel.setOpaque(false);
+        bottomPanel.add(clearHistoryButton);
+        
+        historyPanel.add(bottomPanel, BorderLayout.SOUTH);
         JPanel leftPanel = new GlassPanel(new Color(255,255,255,80), new Color(255,255,255,180), 20);
         leftPanel.setLayout(new BorderLayout(6,6));
         leftPanel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder("Formulas"), BorderFactory.createEmptyBorder(6,6,6,6)));
