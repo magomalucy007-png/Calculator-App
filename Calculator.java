@@ -46,7 +46,7 @@ public class Calculator extends JFrame implements ActionListener {
     private DefaultListModel<String> formulaListModel;
     private JButton challengeButton;
     private final List<HistoryEntry> historyList = new ArrayList<>();
-    private final File historyFile = new File("calculator_history.txt");
+    private final File historyFile = resolveHistoryFile();
     private GradientPanel rootPanel;
     private int challengeScore = 0;
     private int challengeAttempts = 0;
@@ -1172,6 +1172,15 @@ public class Calculator extends JFrame implements ActionListener {
         }
         refreshHistoryDisplay();
         saveHistoryToFile();
+    }
+
+    private static File resolveHistoryFile() {
+        File desktopFile = new File(System.getProperty("user.home"), "OneDrive\\Desktop\\calculator_history.txt");
+        if (desktopFile.exists()) {
+            return desktopFile;
+        }
+        File localFile = new File("calculator_history.txt");
+        return localFile;
     }
 
     private void loadHistoryFromFile() {
