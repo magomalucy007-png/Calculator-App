@@ -269,24 +269,26 @@ public class Calculator extends JFrame implements ActionListener {
             }
         });
         JScrollPane historyListScroll = new JScrollPane(historyListView);
-        historyPanel.setPreferredSize(new Dimension(420, 0));
+        historyListScroll.setPreferredSize(new Dimension(420, 140));
 
         // Combobox panel for formula field selection
         JPanel fieldSelectorPanel = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 16);
         fieldSelectorPanel.setLayout(new BorderLayout(6, 6));
-        fieldSelectorPanel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-        fieldSelectorPanel.setPreferredSize(new Dimension(420, 50));
+        fieldSelectorPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        fieldSelectorPanel.setPreferredSize(new Dimension(420, 60));
         
         formulaFieldsCombo = new JComboBox<>();
         formulaFieldsCombo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        formulaFieldsCombo.setPreferredSize(new Dimension(250, 35));
         formulaFieldsCombo.addActionListener(ev -> updateFormulaFieldsDisplay());
         
         JButton applyFormulaButton = new JButton("Apply Formula");
         applyFormulaButton.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        applyFormulaButton.setPreferredSize(new Dimension(140, 35));
         applyFormulaButton.addActionListener(this);
         applyFormulaButton.setFocusable(false);
         
-        JPanel fieldComboPanel = new JPanel(new BorderLayout(6, 0));
+        JPanel fieldComboPanel = new JPanel(new BorderLayout(8, 0));
         fieldComboPanel.setOpaque(false);
         fieldComboPanel.add(formulaFieldsCombo, BorderLayout.CENTER);
         fieldComboPanel.add(applyFormulaButton, BorderLayout.EAST);
@@ -295,22 +297,36 @@ public class Calculator extends JFrame implements ActionListener {
 
         formulaArea = new JTextArea();
         formulaArea.setEditable(false);
-        formulaArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        formulaArea.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         formulaArea.setLineWrap(true);
         formulaArea.setWrapStyleWord(true);
         formulaArea.setBackground(new Color(240, 245, 250));
         formulaArea.setForeground(new Color(34, 37, 55));
+        formulaArea.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         formulaArea.setText("Select a formula category to view available fields.");
         JScrollPane formulaScroll = new JScrollPane(formulaArea);
-        formulaScroll.setPreferredSize(new Dimension(0, 140));
+        formulaScroll.setPreferredSize(new Dimension(420, 100));
+
+        // Initialize stepsArea for code compatibility (used in applyExplain and other methods)
+        stepsArea = new JTextArea();
+        stepsArea.setEditable(false);
+        stepsArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        stepsArea.setLineWrap(true);
+        stepsArea.setWrapStyleWord(true);
+
+        // Initialize historyStepsArea for code compatibility
+        historyStepsArea = new JTextArea();
+        historyStepsArea.setEditable(false);
+        historyStepsArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        historyStepsArea.setLineWrap(true);
+        historyStepsArea.setWrapStyleWord(true);
 
         // Challenge panel
         JPanel challengePanel = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 16);
         challengePanel.setLayout(new BorderLayout(6, 6));
-        challengePanel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-        challengePanel.setPreferredSize(new Dimension(420, 120));
+        challengePanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        challengePanel.setPreferredSize(new Dimension(420, 90));
 
-        Box challengeBox = Box.createVerticalBox();
         challengeLabel = new JLabel("Challenge: ready");
         challengeLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
         challengeLabel.setForeground(new Color(34, 37, 55));
@@ -321,25 +337,37 @@ public class Calculator extends JFrame implements ActionListener {
         statusLabel = new JLabel("Ready to calculate");
         statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         
+        Box challengeBox = Box.createVerticalBox();
         challengeBox.add(challengeLabel);
-        challengeBox.add(Box.createVerticalStrut(4));
+        challengeBox.add(Box.createVerticalStrut(6));
         challengeBox.add(challengeStatusLabel);
-        challengeBox.add(Box.createVerticalStrut(4));
+        challengeBox.add(Box.createVerticalStrut(6));
         challengeBox.add(statusLabel);
         
         challengePanel.add(challengeBox, BorderLayout.WEST);
 
-        // Assemble history panel with new layout
-        historyPanel.add(historyListScroll, BorderLayout.NORTH);
-        historyPanel.add(fieldSelectorPanel, BorderLayout.CENTER);
+        // Assemble history panel with new layout using BorderLayout
+        historyPanel.setLayout(new BorderLayout(0, 6));
+        historyPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         
-        // Create a south panel with formula area and challenge panel
-        JPanel southPanel = new JPanel(new BorderLayout(6, 6));
-        southPanel.setOpaque(false);
-        southPanel.add(formulaScroll, BorderLayout.NORTH);
-        southPanel.add(challengePanel, BorderLayout.CENTER);
+        // Top: History list
+        historyPanel.add(new JLabel("Previous Calculations"), BorderLayout.NORTH);
         
-        historyPanel.add(southPanel, BorderLayout.SOUTH);
+        // Create main content area with all components
+        JPanel contentPanel = new JPanel();
+        contentPanel.setOpaque(false);
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.add(historyListScroll);
+        contentPanel.add(Box.createVerticalStrut(8));
+        contentPanel.add(fieldSelectorPanel);
+        contentPanel.add(Box.createVerticalStrut(6));
+        contentPanel.add(formulaScroll);
+        contentPanel.add(Box.createVerticalStrut(6));
+        contentPanel.add(challengePanel);
+        
+        JScrollPane contentScroll = new JScrollPane(contentPanel);
+        contentScroll.setBorder(null);
+        historyPanel.add(contentScroll, BorderLayout.CENTER);
         // Left: formula library
         JPanel leftPanel = new GlassPanel(new Color(255,255,255,80), new Color(255,255,255,180), 20);
         leftPanel.setLayout(new BorderLayout(6,6));
