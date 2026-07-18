@@ -243,6 +243,9 @@ public class Calculator extends JFrame implements ActionListener {
                 label.setOpaque(true);
                 label.setFont(new Font("Segoe UI", Font.PLAIN, 13));
                 label.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+                label.setVerticalAlignment(SwingConstants.TOP);
+                label.setVerticalTextPosition(SwingConstants.TOP);
+                label.setPreferredSize(new Dimension(list.getWidth() - 20, 64));
                 if (isSelected) {
                     label.setBackground(new Color(120, 77, 255));
                     label.setForeground(Color.WHITE);
