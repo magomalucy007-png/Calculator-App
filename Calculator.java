@@ -46,6 +46,10 @@ public class Calculator extends JFrame implements ActionListener {
     private DefaultListModel<String> formulaListModel;
     private JComboBox<String> formulaFieldsCombo;
     private JButton challengeButton;
+    private JTextField challengeAttemptField;
+    private JButton checkAnswerButton;
+    private JButton revealAnswerButton;
+    private boolean challengeInProgress = false;
     private final List<HistoryEntry> historyList = new ArrayList<>();
     private final File historyFile = resolveHistoryFile();
     private GradientPanel rootPanel;
@@ -325,7 +329,7 @@ public class Calculator extends JFrame implements ActionListener {
         JPanel challengePanel = new GlassPanel(new Color(255, 255, 255, 70), new Color(255, 255, 255, 170), 16);
         challengePanel.setLayout(new BorderLayout(6, 6));
         challengePanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        challengePanel.setPreferredSize(new Dimension(420, 90));
+        challengePanel.setPreferredSize(new Dimension(420, 140));
 
         challengeLabel = new JLabel("Challenge: ready");
         challengeLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -337,12 +341,44 @@ public class Calculator extends JFrame implements ActionListener {
         statusLabel = new JLabel("Ready to calculate");
         statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         
+        // Attempt input field
+        challengeAttemptField = new JTextField();
+        challengeAttemptField.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        challengeAttemptField.setBorder(BorderFactory.createLineBorder(new Color(180, 195, 220), 1, true));
+        challengeAttemptField.setVisible(false);
+        challengeAttemptField.setPreferredSize(new Dimension(200, 30));
+        
+        // Check Answer button
+        checkAnswerButton = new JButton("Check Answer");
+        checkAnswerButton.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        checkAnswerButton.setPreferredSize(new Dimension(120, 30));
+        checkAnswerButton.setVisible(false);
+        checkAnswerButton.setFocusable(false);
+        checkAnswerButton.addActionListener(this);
+        
+        // Reveal Answer button
+        revealAnswerButton = new JButton("Reveal");
+        revealAnswerButton.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        revealAnswerButton.setPreferredSize(new Dimension(80, 30));
+        revealAnswerButton.setVisible(false);
+        revealAnswerButton.setFocusable(false);
+        revealAnswerButton.addActionListener(this);
+        
+        JPanel attemptPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        attemptPanel.setOpaque(false);
+        attemptPanel.add(new JLabel("Your answer:"));
+        attemptPanel.add(challengeAttemptField);
+        attemptPanel.add(checkAnswerButton);
+        attemptPanel.add(revealAnswerButton);
+        
         Box challengeBox = Box.createVerticalBox();
         challengeBox.add(challengeLabel);
         challengeBox.add(Box.createVerticalStrut(6));
         challengeBox.add(challengeStatusLabel);
         challengeBox.add(Box.createVerticalStrut(6));
         challengeBox.add(statusLabel);
+        challengeBox.add(Box.createVerticalStrut(6));
+        challengeBox.add(attemptPanel);
         
         challengePanel.add(challengeBox, BorderLayout.WEST);
 
@@ -695,6 +731,12 @@ public class Calculator extends JFrame implements ActionListener {
                 break;
             case "Challenge Me":
                 startChallenge();
+                break;
+            case "Check Answer":
+                checkChallengeAnswer();
+                break;
+            case "Reveal":
+                revealChallengeAnswer();
                 break;
             case "Explain":
                 applyExplain();
@@ -1119,16 +1161,6 @@ public class Calculator extends JFrame implements ActionListener {
             }
             appendHistory(expr + " = " + resultText, visibleSteps);
             updateStatus("Calculated " + resultText);
-            if (currentChallenge != null && Math.abs(evaluation.value - currentChallenge.answer) < 1e-9) {
-                challengeAttempts++;
-                challengeScore++;
-                updateChallengeStatus("Correct! Score: " + challengeScore + "/" + challengeAttempts, true);
-                currentChallenge = null;
-            } else if (currentChallenge != null) {
-                challengeAttempts++;
-                updateChallengeStatus("Not quite. Score: " + challengeScore + "/" + challengeAttempts, false);
-                currentChallenge = null;
-            }
         } catch (Exception ex) {
             showSmartError(ex.getMessage());
         }
@@ -1716,12 +1748,65 @@ public class Calculator extends JFrame implements ActionListener {
 
     private void startChallenge() {
         currentChallenge = generateChallenge();
-        expression.setLength(0);
-        expression.append(currentChallenge.expression);
-        display.setText("Q: " + currentChallenge.displayText);
-        startNewNumber = false;
-        updateChallengeStatus("Solve it and press =", true);
-        updateStatus("Challenge started");
+        challengeInProgress = true;
+        challengeAttemptField.setText("");
+        challengeAttemptField.setVisible(true);
+        checkAnswerButton.setVisible(true);
+        revealAnswerButton.setVisible(true);
+        
+        updateChallengeStatus("Q: " + currentChallenge.displayText, true);
+        updateStatus("Enter your answer and click 'Check Answer'");
+        challengeAttemptField.requestFocusInWindow();
+    }
+
+    private void checkChallengeAnswer() {
+        if (!challengeInProgress || currentChallenge == null) {
+            updateStatus("No active challenge");
+            return;
+        }
+        
+        try {
+            String attemptText = challengeAttemptField.getText().trim();
+            if (attemptText.isBlank()) {
+                updateStatus("Enter an answer");
+                return;
+            }
+            
+            double userAnswer = Double.parseDouble(attemptText);
+            challengeAttempts++;
+            
+            if (Math.abs(userAnswer - currentChallenge.answer) < 1e-6) {
+                challengeScore++;
+                updateChallengeStatus("✓ Correct! Answer: " + formatNumber(currentChallenge.answer), true);
+                challengeAttemptField.setVisible(false);
+                checkAnswerButton.setVisible(false);
+                revealAnswerButton.setVisible(false);
+                challengeInProgress = false;
+                currentChallenge = null;
+                updateStatus("Great job! Click 'Challenge Me' for another");
+            } else {
+                updateChallengeStatus("✗ Not quite. Try again or click 'Reveal'", false);
+                updateStatus("Your answer: " + attemptText + " | Correct: " + formatNumber(currentChallenge.answer));
+            }
+        } catch (NumberFormatException ex) {
+            updateStatus("Please enter a valid number");
+        }
+    }
+    
+    private void revealChallengeAnswer() {
+        if (!challengeInProgress || currentChallenge == null) {
+            updateStatus("No active challenge");
+            return;
+        }
+        
+        challengeAttempts++;
+        updateChallengeStatus("Answer: " + formatNumber(currentChallenge.answer), false);
+        challengeAttemptField.setVisible(false);
+        checkAnswerButton.setVisible(false);
+        revealAnswerButton.setVisible(false);
+        challengeInProgress = false;
+        currentChallenge = null;
+        updateStatus("Want to try another? Click 'Challenge Me'");
     }
 
     private void updateChallengeStatus(String text, boolean positive) {
